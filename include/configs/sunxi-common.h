@@ -274,16 +274,23 @@ extern int soft_i2c_gpio_scl;
 #define CONFIG_SUNXI_GPIO
 
 #ifdef CONFIG_VIDEO
+/* Do we want to initialize a simple FB? */
+#define CONFIG_VIDEO_DT_SIMPLEFB
+#if defined(CONFIG_MACH_SUN8I_H3) || defined(CONFIG_MACH_SUN50I)
+#define CONFIG_VIDEO_SUNXI2
+#else
+#define CONFIG_VIDEO_SUNXI
+#endif
+
 /*
  * The amount of RAM to keep free at the top of RAM when relocating u-boot,
  * to use as framebuffer. This must be a multiple of 4096.
  */
+#ifdef CONFIG_VIDEO_SUNXI2
+#define CONFIG_SUNXI_MAX_FB_SIZE (32 << 20)
+#else
 #define CONFIG_SUNXI_MAX_FB_SIZE (16 << 20)
-
-/* Do we want to initialize a simple FB? */
-#define CONFIG_VIDEO_DT_SIMPLEFB
-
-#define CONFIG_VIDEO_SUNXI
+#endif
 
 #define CONFIG_VIDEO_LOGO
 #define CONFIG_VIDEO_STD_TIMINGS
