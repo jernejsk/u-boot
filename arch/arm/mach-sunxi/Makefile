@@ -19,9 +19,11 @@ endif
 obj-$(CONFIG_MACH_SUN6I)	+= prcm.o
 obj-$(CONFIG_MACH_SUN8I)	+= prcm.o
 obj-$(CONFIG_MACH_SUN9I)	+= prcm.o
+obj-$(CONFIG_MACH_SUN50I)	+= prcm.o
 obj-$(CONFIG_MACH_SUN6I)	+= p2wi.o
 obj-$(CONFIG_MACH_SUN8I)	+= rsb.o
 obj-$(CONFIG_MACH_SUN9I)	+= rsb.o
+obj-$(CONFIG_MACH_SUN50I)	+= rsb.o
 obj-$(CONFIG_MACH_SUN4I)	+= clock_sun4i.o
 obj-$(CONFIG_MACH_SUN5I)	+= clock_sun4i.o
 obj-$(CONFIG_MACH_SUN6I)	+= clock_sun6i.o
@@ -37,6 +39,7 @@ obj-$(CONFIG_MACH_SUN9I)	+= clock_sun9i.o gtbus_sun9i.o
 obj-$(CONFIG_AXP152_POWER)	+= pmic_bus.o
 obj-$(CONFIG_AXP209_POWER)	+= pmic_bus.o
 obj-$(CONFIG_AXP221_POWER)	+= pmic_bus.o
+obj-$(CONFIG_AXP803_POWER)	+= pmic_bus.o
 obj-$(CONFIG_AXP809_POWER)	+= pmic_bus.o
 obj-$(CONFIG_AXP818_POWER)	+= pmic_bus.o
 

@@ -20,7 +20,7 @@ static int rsb_set_device_mode(void);
 
 static void rsb_cfg_io(void)
 {
-#ifdef CONFIG_MACH_SUN8I
+#if defined CONFIG_MACH_SUN8I || defined CONFIG_MACH_SUN50I
 	sunxi_gpio_set_cfgpin(SUNXI_GPL(0), SUN8I_GPL_R_RSB);
 	sunxi_gpio_set_cfgpin(SUNXI_GPL(1), SUN8I_GPL_R_RSB);
 	sunxi_gpio_set_pull(SUNXI_GPL(0), 1);
