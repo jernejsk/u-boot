@@ -864,9 +864,10 @@ void *video_hw_init(void)
 #ifdef CONFIG_VIDEO_HDMI
 	int ret, hpd, hpd_delay, edid;
 #endif
-	int i, overscan_offset, overscan_x, overscan_y;
+	int i, x, overscan_offset, overscan_x, overscan_y;
 	unsigned int fb_dma_addr;
 	char mon[16];
+	int hb, vb;
 
 	memset(&sunxi_display, 0, sizeof(struct sunxi_display));
 
@@ -947,6 +948,39 @@ void *video_hw_init(void)
 	       (mode->vmode == FB_VMODE_INTERLACED) ? "i" : "",
 	       sunxi_get_mon_desc(sunxi_display.monitor),
 	       overscan_x, overscan_y);
+
+	if (mode->pixclock_khz <= 27000)
+		x = 11;
+	else if (mode->pixclock_khz <= 74250)
+		x = 4;
+	else if (mode->pixclock_khz <= 148500)
+		x = 2;
+	else
+		x = 1;
+
+	hb = mode->left_margin + mode->right_margin + mode->hsync_len;
+	vb = mode->upper_margin + mode->lower_margin + mode->vsync_len;
+
+	printf("\nhdmi_core.c line:\n");
+	printf("{MODE_XXX, 0, %d, 0, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, 0, 0}\n\n",
+		mode->pixclock_khz * 1000, mode->xres, mode->yres,
+		mode->xres + hb,
+		mode->left_margin, mode->right_margin, mode->hsync_len,
+		mode->yres + vb,
+		mode->upper_margin, mode->lower_margin, mode->vsync_len,
+		(mode->sync & FB_SYNC_HOR_HIGH_ACT) ? 1 : 0,
+		(mode->sync & FB_SYNC_VERT_HIGH_ACT) ? 1 : 0,
+		(mode->vmode & FB_VMODE_INTERLACED) ? 1 : 0);
+	printf("hdmi_bsp_sun8iw7.c line:\n");
+	printf("{YYY, %d, 0, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, 1, 1}\n\n",
+		x, (mode->sync & (FB_SYNC_HOR_HIGH_ACT | FB_SYNC_VERT_HIGH_ACT)) ? 96 : 0 +
+		(mode->vmode & FB_VMODE_INTERLACED) ? 1 : 0, mode->xres >> 8,
+		mode->vsync_len, mode->yres >> 8, hb >> 8, mode->lower_margin,
+		mode->right_margin >> 8, mode->hsync_len >> 8, mode->xres & 0xff,
+		hb & 0xff, mode->right_margin & 0xff, mode->hsync_len & 0xff,
+		mode->yres & 0xff, vb
+		);
+	printf("script.bin setting:\npll_video = %d\n\n", (mode->pixclock_khz * x) / 1000);
 
 	gd->fb_base = gd->bd->bi_dram[0].start +
 		      gd->bd->bi_dram[0].size - sunxi_display.fb_size;
