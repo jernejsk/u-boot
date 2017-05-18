@@ -25,8 +25,6 @@ void tvencoder_mode_set(struct sunxi_tve_reg * const tve, enum tve_mode mode)
 		writel(SUNXI_TVE_UNKNOWN1_VGA, &tve->unknown1);
 		break;
 	case tve_mode_composite_pal_nc:
-		writel(SUNXI_TVE_CHROMA_FREQ_PAL_NC, &tve->chroma_freq);
-		/* Fall through */
 	case tve_mode_composite_pal:
 		writel(SUNXI_TVE_GCTRL_DAC_INPUT(0, 1) |
 		       SUNXI_TVE_GCTRL_DAC_INPUT(1, 2) |
@@ -35,6 +33,10 @@ void tvencoder_mode_set(struct sunxi_tve_reg * const tve, enum tve_mode mode)
 		writel(SUNXI_TVE_CFG0_PAL, &tve->cfg0);
 		writel(SUNXI_TVE_DAC_CFG0_COMPOSITE, &tve->dac_cfg0);
 		writel(SUNXI_TVE_FILTER_COMPOSITE, &tve->filter);
+		if (mode == tve_mode_composite_pal)
+			writel(SUNXI_TVE_CHROMA_FREQ_PAL, &tve->chroma_freq);
+		else
+			writel(SUNXI_TVE_CHROMA_FREQ_PAL_NC, &tve->chroma_freq);
 		writel(SUNXI_TVE_PORCH_NUM_PAL, &tve->porch_num);
 		writel(SUNXI_TVE_LINE_NUM_PAL, &tve->line_num);
 		writel(SUNXI_TVE_BLANK_BLACK_LEVEL_PAL,

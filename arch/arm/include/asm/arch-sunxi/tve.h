@@ -45,7 +45,9 @@ struct sunxi_tve_reg {
 	u32 csc_reg1;			/* 0x044 */
 	u32 csc_reg2;			/* 0x048 */
 	u32 csc_reg3;			/* 0x04c */
-	u8 res1[0xb0];			/* 0x050 */
+	u8 res1[0xa8];			/* 0x050 */
+	u32 auto_detect_cfg0;		/* 0x0f8 */
+	u32 auto_detect_cfg1;		/* 0x0fc */
 	u32 color_burst;		/* 0x100 */
 	u32 vsync_num;			/* 0x104 */
 	u32 notch_freq;			/* 0x108 */
@@ -62,6 +64,10 @@ struct sunxi_tve_reg {
 	u32 slave_para;			/* 0x134 */
 	u32 cfg1;			/* 0x138 */
 	u32 cfg2;			/* 0x13c */
+	u8 res2[0x1c4];			/* 0x140 */
+	u32 calibration;		/* 0x304 */
+	u8 res3[0x4];			/* 0x308 */
+	u32 unknown3;			/* 0x30c */
 };
 
 /*
@@ -79,12 +85,14 @@ struct sunxi_tve_reg {
 #define SUNXI_TVE_CFG0_PAL			0x07030001
 #define SUNXI_TVE_CFG0_NTSC			0x07030000
 #define SUNXI_TVE_DAC_CFG0_VGA			0x403e1ac7
-#ifdef CONFIG_MACH_SUN5I
+#if defined(CONFIG_MACH_SUN5I) || defined(CONFIG_MACH_SUNXI_H3_H5)
 #define SUNXI_TVE_DAC_CFG0_COMPOSITE		0x433f0009
 #else
 #define SUNXI_TVE_DAC_CFG0_COMPOSITE		0x403f0008
 #endif
+#define SUNXI_TVE_DAC_CFG0_DETECTION		0x433f0289
 #define SUNXI_TVE_FILTER_COMPOSITE		0x00000120
+#define SUNXI_TVE_CHROMA_FREQ_PAL		0x2a098acb
 #define SUNXI_TVE_CHROMA_FREQ_PAL_M		0x21e6efe3
 #define SUNXI_TVE_CHROMA_FREQ_PAL_NC		0x21f69446
 #define SUNXI_TVE_PORCH_NUM_PAL			0x008a0018
@@ -105,6 +113,8 @@ struct sunxi_tve_reg {
 #define SUNXI_TVE_AUTO_DETECT_STATUS_SHORT_GND	3
 #define SUNXI_TVE_AUTO_DETECT_DEBOUNCE_SHIFT(d)	((d) * 8)
 #define SUNXI_TVE_AUTO_DETECT_DEBOUNCE_MASK(d)	(0xf << ((d) * 8))
+#define SUNXI_TVE_AUTO_DETECT_CFG0		0x00000280
+#define SUNXI_TVE_AUTO_DETECT_CFG1		0x028F00FF
 #define SUNXI_TVE_CSC_REG0_ENABLE		(1 << 31)
 #define SUNXI_TVE_CSC_REG0			0x08440832
 #define SUNXI_TVE_CSC_REG1			0x3b6dace1
@@ -124,6 +134,9 @@ struct sunxi_tve_reg {
 #define SUNXI_TVE_RESYNC_NUM_PAL		0x800d000c
 #define SUNXI_TVE_RESYNC_NUM_NTSC		0x000e000c
 #define SUNXI_TVE_SLAVE_PARA_COMPOSITE		0x00000000
+#define SUNXI_TVE_CALIBRATION_H3		0x02000c00
+#define SUNXI_TVE_CALIBRATION_H5		0x02850000
+#define SUNXI_TVE_UNKNOWN3_H5			0x00101110
 
 void tvencoder_mode_set(struct sunxi_tve_reg * const tve, enum tve_mode mode);
 void tvencoder_enable(struct sunxi_tve_reg * const tve);

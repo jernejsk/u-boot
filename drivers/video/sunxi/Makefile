@@ -6,4 +6,4 @@
 #
 
 obj-$(CONFIG_VIDEO_SUNXI) += sunxi_display.o lcdc.o tve_common.o ../videomodes.o
-obj-$(CONFIG_VIDEO_DE2) += sunxi_de2.o sunxi_dw_hdmi.o lcdc.o ../dw_hdmi.o
+obj-$(CONFIG_VIDEO_DE2) += sunxi_de2.o sunxi_dw_hdmi.o sunxi_tve.o lcdc.o tve_common.o ../dw_hdmi.o
