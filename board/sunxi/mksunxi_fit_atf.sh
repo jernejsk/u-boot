@@ -13,6 +13,12 @@ if [ ! -f $BL31 ]; then
 	BL31=/dev/null
 fi
 
+if [ "$(basename $1 .dtb | cut -d - -f 1-2)" = "sun50i-h6" ]; then
+	BL31_ADDR=0x104000
+else
+	BL31_ADDR=0x44000
+fi
+
 cat << __HEADER_EOF
 /dts-v1/;
 
@@ -35,8 +41,8 @@ cat << __HEADER_EOF
 			type = "firmware";
 			arch = "arm64";
 			compression = "none";
-			load = <0x44000>;
-			entry = <0x44000>;
+			load = <$BL31_ADDR>;
+			entry = <$BL31_ADDR>;
 		};
 __HEADER_EOF
 
