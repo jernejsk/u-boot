@@ -256,7 +256,30 @@ int board_init(void)
 
 int dram_init(void)
 {
+#if PHYS_SDRAM_0_SIZE == (SZ_2G + SZ_1G)
+	/*
+	 * get_ram_size() doesn't support non-pow-of-2 sizes, so the detection
+	 * of 3GiB DRAM is implemented here.
+	 * It just checks whether the DRAM is bigger than 2GiB, as the DRAM
+	 * module is usually 4GiB in this case (and 1GiB is not accessible).
+	 */
+	u32 save_0, save_2g;
+	gd->ram_size = get_ram_size((long *)PHYS_SDRAM_0, SZ_2G);
+	if (gd->ram_size == SZ_2G) {
+		save_0 = readl(PHYS_SDRAM_0);
+		save_2g = readl(PHYS_SDRAM_0 + SZ_2G);
+		writel(0, PHYS_SDRAM_0);
+		writel(0xaa55aa55, PHYS_SDRAM_0 + SZ_2G);
+		dsb();
+		if (readl(PHYS_SDRAM_0) != readl(PHYS_SDRAM_0 + SZ_2G)) {
+			gd->ram_size = SZ_2G + SZ_1G;
+			writel(save_2g, PHYS_SDRAM_0 + SZ_2G);
+		}
+		writel(save_0, PHYS_SDRAM_0);
+	}
+#else
 	gd->ram_size = get_ram_size((long *)PHYS_SDRAM_0, PHYS_SDRAM_0_SIZE);
+#endif
 
 	return 0;
 }
