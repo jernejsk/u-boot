@@ -541,6 +541,7 @@ int board_mmc_init(bd_t *bis)
 void sunxi_board_init(void)
 {
 	int power_failed = 0;
+	unsigned long long dram_real_size;
 
 #ifdef CONFIG_SY8106A_POWER
 	power_failed = sy8106a_set_vout1(CONFIG_SY8106A_VOUT1_VOLT);
@@ -601,8 +602,16 @@ void sunxi_board_init(void)
 #endif
 #endif
 	printf("DRAM:");
-	gd->ram_size = (phys_size_t)sunxi_dram_init();
-	printf(" %d MiB\n", (int)(gd->ram_size >> 20));
+	dram_real_size = sunxi_dram_init();
+	printf(" %d MiB", (int)(dram_real_size >> 20));
+	if (dram_real_size > CONFIG_SUNXI_DRAM_MAX_SIZE) {
+		gd->ram_size = CONFIG_SUNXI_DRAM_MAX_SIZE;
+		printf(", %d MiB usable\n", (int)(gd->ram_size >> 20));
+	} else {
+		gd->ram_size = (phys_size_t) dram_real_size;
+		printf("\n");
+	}
+
 	if (!gd->ram_size)
 		hang();
 
