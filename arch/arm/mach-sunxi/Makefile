@@ -13,7 +13,7 @@ obj-y	+= clock.o
 obj-y	+= cpu_info.o
 obj-y	+= dram_helpers.o
 obj-y	+= pinmux.o
-ifndef CONFIG_MACH_SUN9I
+ifeq ($(CONFIG_MACH_SUN9I)$(CONFIG_MACH_SUN50I_H6),)
 obj-y	+= usb_phy.o
 endif
 obj-$(CONFIG_MACH_SUN6I)	+= prcm.o

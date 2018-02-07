@@ -777,7 +777,7 @@ int misc_init_r(void)
 
 	setup_environment(gd->fdt_blob);
 
-#ifndef CONFIG_MACH_SUN9I
+#if !defined(CONFIG_MACH_SUN9I) && !defined(CONFIG_MACH_SUN50I_H6)
 	ret = sunxi_usb_phy_probe();
 	if (ret)
 		return ret;
