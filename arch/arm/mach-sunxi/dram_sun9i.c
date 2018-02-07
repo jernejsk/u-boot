@@ -854,7 +854,7 @@ signed int DRAMC_get_dram_size(void)
 	return 1 << dram_size;
 }
 
-unsigned long sunxi_dram_init(void)
+unsigned long long sunxi_dram_init(void)
 {
 	struct sunxi_mctl_com_reg * const mctl_com =
 		(struct sunxi_mctl_com_reg *)SUNXI_DRAM_COM_BASE;
@@ -957,5 +957,5 @@ unsigned long sunxi_dram_init(void)
 	mctl_com_init(&para);
 
 	/* return the proper RAM size */
-	return DRAMC_get_dram_size() << 20;
+	return ((unsigned long long)DRAMC_get_dram_size()) << 20;
 }

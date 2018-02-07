@@ -264,7 +264,7 @@ static void mctl_init(u32 *bus_width)
 	writel(0x00000000, &mctl_ctl->rfshctl3);
 }
 
-unsigned long sunxi_dram_init(void)
+unsigned long long sunxi_dram_init(void)
 {
 	struct sunxi_mctl_com_reg * const mctl_com =
 		(struct sunxi_mctl_com_reg *)SUNXI_DRAM_COM_BASE;

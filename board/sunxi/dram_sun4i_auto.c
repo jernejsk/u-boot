@@ -29,7 +29,7 @@ static struct dram_para dram_para = {
 	.dqs_gating_delay = CONFIG_DRAM_DQS_GATING_DELAY,
 };
 
-unsigned long sunxi_dram_init(void)
+unsigned long long sunxi_dram_init(void)
 {
 	return dramc_init(&dram_para);
 }

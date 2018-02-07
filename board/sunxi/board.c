@@ -601,7 +601,7 @@ void sunxi_board_init(void)
 #endif
 #endif
 	printf("DRAM:");
-	gd->ram_size = sunxi_dram_init();
+	gd->ram_size = (phys_size_t)sunxi_dram_init();
 	printf(" %d MiB\n", (int)(gd->ram_size >> 20));
 	if (!gd->ram_size)
 		hang();

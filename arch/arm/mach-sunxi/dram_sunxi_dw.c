@@ -682,7 +682,7 @@ static void mctl_auto_detect_dram_size(uint16_t socid, struct dram_para *para)
 	   3,  3,  3,  3,  3,  3,  3,  3,			\
 	   3,  3,  3,  3,  2,  0,  0      }
 
-unsigned long sunxi_dram_init(void)
+unsigned long long sunxi_dram_init(void)
 {
 	struct sunxi_mctl_com_reg * const mctl_com =
 			(struct sunxi_mctl_com_reg *)SUNXI_DRAM_COM_BASE;
@@ -763,6 +763,6 @@ unsigned long sunxi_dram_init(void)
 	mctl_auto_detect_dram_size(socid, &para);
 	mctl_set_cr(socid, &para);
 
-	return (1UL << (para.row_bits + para.bank_bits)) * para.page_size *
+	return (1ULL << (para.row_bits + para.bank_bits)) * para.page_size *
 	       (para.dual_rank ? 2 : 1);
 }

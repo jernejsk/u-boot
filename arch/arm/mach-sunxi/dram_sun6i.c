@@ -326,7 +326,7 @@ static void mctl_port_cfg(void)
 	writel(0x00000307, &mctl_com->mbagcr[5]);
 }
 
-unsigned long sunxi_dram_init(void)
+unsigned long long sunxi_dram_init(void)
 {
 	struct sunxi_mctl_com_reg * const mctl_com =
 		(struct sunxi_mctl_com_reg *)SUNXI_DRAM_COM_BASE;
