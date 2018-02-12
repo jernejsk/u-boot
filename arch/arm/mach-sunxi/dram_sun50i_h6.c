@@ -10,16 +10,33 @@
 #include <asm/arch/clock.h>
 #include <asm/arch/dram.h>
 #include <asm/arch/cpu.h>
+#include <linux/bitops.h>
 #include <linux/kconfig.h>
 
 #define SZ_3G (3UL * 1024 * 1024 * 1024)
 
+/*
+ * The delay parameters below allow to allegedly specify delay times of some
+ * unknown unit for each individual bit trace in each of the four data bytes
+ * the 32-bit wide access consists of. Also three control signals can be
+ * adjusted individually.
+ */
+#define NR_OF_BYTE_LANES	(32 / BITS_PER_BYTE)
+/* The eight data lines (DQn) plus DM, DQS, DQS/DM/DQ Output Enable and DQSN */
+#define WR_LINES_PER_BYTE_LANE	(BITS_PER_BYTE + 4)
+/*
+ * The eight data lines (DQn) plus DM, DQS, DQS/DM/DQ Output Enable, DQSN,
+ * Termination and Power down
+ */
+#define RD_LINES_PER_BYTE_LANE	(BITS_PER_BYTE + 6)
 struct dram_para {
 	u32 clk;
 	enum sunxi_dram_type type;
 	u8 cols;
 	u8 rows;
 	u8 ranks;
+	const u8 dx_read_delays[NR_OF_BYTE_LANES][RD_LINES_PER_BYTE_LANE];
+	const u8 dx_write_delays[NR_OF_BYTE_LANES][WR_LINES_PER_BYTE_LANE];
 };
 
 static void mctl_sys_init(struct dram_para *para);
@@ -429,45 +446,50 @@ static void mctl_com_init(struct dram_para *para)
 
 static void mctl_bit_delay_set(struct dram_para *para)
 {
-	/*
-	 * TODO: we don't know them at all. The numbers are just copied from
-	 * register dump.
-	 */
 	struct sunxi_mctl_phy_reg * const mctl_phy =
 			(struct sunxi_mctl_phy_reg *)SUNXI_DRAM_PHY0_BASE;
-	int i;
+	int i, j;
 	u32 val;
 
-	writel(0x07080708, &mctl_phy->dx[0].bdlr0);
-	writel(0x0907070b, &mctl_phy->dx[0].bdlr1);
-	writel(0x00000001, &mctl_phy->dx[0].bdlr2);
-	writel(0x07000505, &mctl_phy->dx[1].bdlr0);
-	writel(0x03040302, &mctl_phy->dx[1].bdlr1);
-	writel(0x00040402, &mctl_phy->dx[1].bdlr2);
-	writel(0x06050004, &mctl_phy->dx[2].bdlr0);
-	writel(0x07060607, &mctl_phy->dx[2].bdlr1);
-	writel(0x00000003, &mctl_phy->dx[2].bdlr2);
-	writel(0x05020402, &mctl_phy->dx[3].bdlr0);
-	writel(0x06060705, &mctl_phy->dx[3].bdlr1);
-	writel(0x00000002, &mctl_phy->dx[3].bdlr2);
+	for (i = 0; i < 4; i++) {
+		val = readl(&mctl_phy->dx[i].bdlr0);
+		for (j = 0; j < 4; j++)
+			val += para->dx_write_delays[i][j] << (j * 8);
+		writel(val, &mctl_phy->dx[i].bdlr0);
+
+		val = readl(&mctl_phy->dx[i].bdlr1);
+		for (j = 0; j < 4; j++)
+			val += para->dx_write_delays[i][j + 4] << (j * 8);
+		writel(val, &mctl_phy->dx[i].bdlr1);
+
+		val = readl(&mctl_phy->dx[i].bdlr2);
+		for (j = 0; j < 4; j++)
+			val += para->dx_write_delays[i][j + 8] << (j * 8);
+		writel(val, &mctl_phy->dx[i].bdlr2);
+	}
 	clrbits_le32(&mctl_phy->pgcr[0], BIT(26));
 
-	writel(0x0c060406, &mctl_phy->dx[0].bdlr3);
-	writel(0x0e0a0a10, &mctl_phy->dx[0].bdlr4);
-	writel(0x00000004, &mctl_phy->dx[0].bdlr5);
-	writel(0x00040400, &mctl_phy->dx[0].bdlr6);
-	writel(0x0b060809, &mctl_phy->dx[1].bdlr3);
-	writel(0x05040807, &mctl_phy->dx[1].bdlr4);
-	writel(0x00000004, &mctl_phy->dx[1].bdlr5);
-	writel(0x00040400, &mctl_phy->dx[1].bdlr6);
-	writel(0x08060407, &mctl_phy->dx[2].bdlr3);
-	writel(0x080a0609, &mctl_phy->dx[2].bdlr4);
-	writel(0x00000004, &mctl_phy->dx[2].bdlr5);
-	writel(0x00040400, &mctl_phy->dx[2].bdlr6);
-	writel(0x06090409, &mctl_phy->dx[3].bdlr3);
-	writel(0x0f0e0b0a, &mctl_phy->dx[3].bdlr4);
-	writel(0x00000004, &mctl_phy->dx[3].bdlr5);
-	writel(0x00040400, &mctl_phy->dx[3].bdlr6);
+	for (i = 0; i < 4; i++) {
+		val = readl(&mctl_phy->dx[i].bdlr3);
+		for (j = 0; j < 4; j++)
+			val += para->dx_read_delays[i][j] << (j * 8);
+		writel(val, &mctl_phy->dx[i].bdlr3);
+
+		val = readl(&mctl_phy->dx[i].bdlr4);
+		for (j = 0; j < 4; j++)
+			val += para->dx_read_delays[i][j + 4] << (j * 8);
+		writel(val, &mctl_phy->dx[i].bdlr4);
+
+		val = readl(&mctl_phy->dx[i].bdlr5);
+		for (j = 0; j < 4; j++)
+			val += para->dx_read_delays[i][j + 8] << (j * 8);
+		writel(val, &mctl_phy->dx[i].bdlr5);
+
+		val = readl(&mctl_phy->dx[i].bdlr6);
+		val += (para->dx_read_delays[i][12] << 8) |
+		       (para->dx_read_delays[i][13] << 16);
+		writel(val, &mctl_phy->dx[i].bdlr6);
+	}
 	setbits_le32(&mctl_phy->pgcr[0], BIT(26));
 	udelay(1);
 
@@ -501,7 +523,7 @@ static void mctl_channel_init(struct dram_para *para)
 	clrbits_le32(&mctl_phy->pgcr[6], BIT(0));
 	clrsetbits_le32(&mctl_phy->dxccr, 0xee0, 0x220);
 	/* TODO: VT compensation */
-	clrsetbits_le32(&mctl_phy->dsgcr, BIT(0), 0x440000);
+	clrsetbits_le32(&mctl_phy->dsgcr, BIT(0), 0x440060);
 	clrbits_le32(&mctl_phy->vtcr[1], BIT(1));
 
 	for (i = 0; i < 4; i++)
@@ -643,6 +665,17 @@ unsigned long long mctl_calc_size(struct dram_para *para)
 	return (1ULL << (para->cols + para->rows + 3)) * 4 * para->ranks;
 }
 
+#define SUN50I_H6_DX_WRITE_DELAYS				\
+	{{  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },	\
+	 {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 },	\
+	 {  0,  0,  0,  0,  0,  0,  0,  0,  0,  4,  4,  0 },	\
+	 {  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0 }}
+#define SUN50I_H6_DX_READ_DELAYS					\
+	{{  4,  4,  4,  4,  4,  4,  4,  4,  4,  0,  0,  0,  0,  0 },	\
+	 {  4,  4,  4,  4,  4,  4,  4,  4,  4,  0,  0,  0,  0,  0 },	\
+	 {  4,  4,  4,  4,  4,  4,  4,  4,  4,  0,  0,  0,  0,  0 },	\
+	 {  4,  4,  4,  4,  4,  4,  4,  4,  4,  0,  0,  0,  0,  0 }}
+
 unsigned long long sunxi_dram_init(void)
 {
 	struct sunxi_mctl_com_reg * const mctl_com =
@@ -653,6 +686,8 @@ unsigned long long sunxi_dram_init(void)
 		.ranks = 2,
 		.cols = 11,
 		.rows = 14,
+		.dx_read_delays  = SUN50I_H6_DX_READ_DELAYS,
+		.dx_write_delays = SUN50I_H6_DX_WRITE_DELAYS,
 	};
 
 	unsigned long long size;
