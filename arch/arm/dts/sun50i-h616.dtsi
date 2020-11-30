@@ -192,6 +192,13 @@
 				bias-pull-up;
 			};
 
+			rmii_pins: rmii-pins {
+				pins = "PA0", "PA1", "PA2", "PA3", "PA4",
+				       "PA5", "PA6", "PA7", "PA8", "PA9";
+				function = "emac1";
+				drive-strength = <40>;
+			};
+
 			spi0_pins: spi0-pins {
 				pins = "PC0", "PC2", "PC3", "PC4";
 				function = "spi0";
@@ -476,7 +483,7 @@
 		};
 
 		emac1: ethernet@5030000 {
-			compatible = "allwinner,sun50i-h616-emac";
+			compatible = "allwinner,sun50i-h616-emac2";
 			syscon = <&syscon 1>;
 			reg = <0x05030000 0x10000>;
 			interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;

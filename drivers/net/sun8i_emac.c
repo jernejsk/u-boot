@@ -336,7 +336,7 @@ static int sun8i_emac_set_syscon(struct sun8i_eth_pdata *pdata,
 		return 0;
 	}
 
-	reg = readl(priv->sysctl_reg + 0x30);
+	reg = readl(priv->sysctl_reg + 0x34);
 
 	reg = sun8i_emac_set_syscon_ephy(priv, reg);
 
@@ -377,7 +377,7 @@ static int sun8i_emac_set_syscon(struct sun8i_eth_pdata *pdata,
 		reg |= ((pdata->rx_delay_ps / 100) << SC_ERXDC_OFFSET)
 			 & SC_ERXDC_MASK;
 
-	writel(reg, priv->sysctl_reg + 0x30);
+	writel(reg, priv->sysctl_reg + 0x34);
 
 	return 0;
 }
@@ -1008,6 +1008,8 @@ static const struct udevice_id sun8i_emac_eth_ids[] = {
 	{.compatible = "allwinner,sun8i-r40-gmac",
 		.data = (uintptr_t)R40_GMAC },
 	{.compatible = "allwinner,sun50i-h6-emac",
+		.data = (uintptr_t)H6_EMAC },
+	{.compatible = "allwinner,sun50i-h616-emac2",
 		.data = (uintptr_t)H6_EMAC },
 	{ }
 };
