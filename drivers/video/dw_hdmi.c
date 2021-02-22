@@ -901,7 +901,7 @@ static const u8 pre_buf[] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xe9,
 };
 
-int dw_hdmi_phy_cfg(struct dw_hdmi *hdmi, uint mpixelclock)
+int dw_hdmi_phy_cfg(struct dw_hdmi *hdmi, const struct display_timing *edid)
 {
 	int i, ret;
 
@@ -912,7 +912,7 @@ int dw_hdmi_phy_cfg(struct dw_hdmi *hdmi, uint mpixelclock)
 		hdmi_phy_enable_tmds(hdmi, 0);
 		hdmi_phy_enable_power(hdmi, 0);
 
-		ret = hdmi_phy_configure(hdmi, mpixelclock);
+		ret = hdmi_phy_configure(hdmi, edid->pixelclock.typ);
 		if (ret) {
 			debug("hdmi phy config failure %d\n", ret);
 			return ret;
@@ -988,7 +988,7 @@ int dw_hdmi_enable(struct dw_hdmi *hdmi, const struct display_timing *edid)
 
 	hdmi_av_composer(hdmi, edid);
 
-	ret = hdmi->phy_set(hdmi, edid->pixelclock.typ);
+	ret = hdmi->phy_set(hdmi, edid);
 	if (ret)
 		return ret;
 

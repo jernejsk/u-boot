@@ -292,7 +292,8 @@ static void meson_dw_hdmi_phy_setup_mode(struct meson_dw_hdmi *priv,
 	}
 }
 
-static int meson_dw_hdmi_phy_init(struct dw_hdmi *hdmi, uint pixel_clock)
+static int meson_dw_hdmi_phy_init(struct dw_hdmi *hdmi,
+				  const struct display_timing *edid)
 {
 	struct meson_dw_hdmi *priv = container_of(hdmi, struct meson_dw_hdmi,
 						  hdmi);
@@ -322,7 +323,7 @@ static int meson_dw_hdmi_phy_init(struct dw_hdmi *hdmi, uint pixel_clock)
 	dw_hdmi_top_write(hdmi, HDMITX_TOP_TMDS_CLK_PTTN_CNTL, 0x2);
 
 	/* Setup PHY parameters */
-	meson_dw_hdmi_phy_setup_mode(priv, pixel_clock);
+	meson_dw_hdmi_phy_setup_mode(priv, edid->pixelclock.typ);
 
 	/* Setup PHY */
 	dw_hdmi_hhi_update_bits(priv, HHI_HDMI_PHY_CNTL1,

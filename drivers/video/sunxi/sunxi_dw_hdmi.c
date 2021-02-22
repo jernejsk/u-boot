@@ -265,12 +265,13 @@ static void sunxi_dw_hdmi_lcdc_init(int mux, const struct display_timing *edid,
 	lcdc_enable(lcdc, bpp);
 }
 
-static int sunxi_dw_hdmi_phy_cfg(struct dw_hdmi *hdmi, uint mpixelclock)
+static int sunxi_dw_hdmi_phy_cfg(struct dw_hdmi *hdmi,
+				 const struct display_timing *edid)
 {
 	int phy_div;
 
-	sunxi_dw_hdmi_pll_set(mpixelclock / 1000, &phy_div);
-	sunxi_dw_hdmi_phy_set(hdmi, mpixelclock, phy_div);
+	sunxi_dw_hdmi_pll_set(edid->pixelclock.typ / 1000, &phy_div);
+	sunxi_dw_hdmi_phy_set(hdmi, edid->pixelclock.typ, phy_div);
 
 	return 0;
 }
