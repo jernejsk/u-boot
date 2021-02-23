@@ -44,6 +44,11 @@ config CLK_SUN8I_A83T
 	  This enables common clock driver support for platforms based
 	  on Allwinner A83T SoC.
 
+config CLK_SUN8I_DE2
+	bool "Clock driver for Allwinner Display Engine 2 and 3"
+	help
+	  This enables common clock driver support for Display Engine 2 and 3.
+
 config CLK_SUN8I_R40
 	bool "Clock driver for Allwinner R40"
 	default MACH_SUN8I_R40
