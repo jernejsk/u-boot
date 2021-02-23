@@ -31,6 +31,11 @@ enum {
 	LCD_MAX_LOG2_BPP	= VIDEO_BPP32,
 };
 
+struct sunxi_de2_data {
+	int id;
+	const char *disp_drv_name;
+};
+
 static void sunxi_de2_composer_init(void)
 {
 	struct sunxi_ccm_reg * const ccm =
@@ -228,51 +233,48 @@ static int sunxi_de2_init(struct udevice *dev, ulong fbbase,
 
 static int sunxi_de2_probe(struct udevice *dev)
 {
+	const struct sunxi_de2_data *data =
+		(const struct sunxi_de2_data *)dev_get_driver_data(dev);
 	struct video_uc_plat *plat = dev_get_uclass_plat(dev);
 	struct udevice *disp;
+	struct uclass *uc;
 	int ret;
 
 	/* Before relocation we don't need to do anything */
 	if (!(gd->flags & GD_FLG_RELOC))
 		return 0;
 
-	ret = uclass_get_device_by_driver(UCLASS_DISPLAY,
-					  DM_DRIVER_GET(sunxi_lcd), &disp);
-	if (!ret) {
-		int mux;
+	uclass_id_foreach_dev(UCLASS_DISPLAY, disp, uc) {
+		if (strcmp(disp->driver->name, data->disp_drv_name))
+			continue;
 
-		mux = 0;
+		/*
+		 * This could be just simple device_probe() but it's not meant
+		 * to be called from drivers (it resides in device-internal.h
+		 * header).
+		 */
+		ret = uclass_get_device_by_seq(UCLASS_DISPLAY,
+					       dev_seq(disp), &disp);
+		if (ret)
+			break;
 
-		ret = sunxi_de2_init(dev, plat->base, VIDEO_BPP32, disp, mux,
-				     false);
-		if (!ret) {
-			video_set_flush_dcache(dev, 1);
-			return 0;
-		}
+		ret = sunxi_de2_init(dev, plat->base, VIDEO_BPP32, disp,
+				     data->id, false);
+		if (ret)
+			break;
+
+		video_set_flush_dcache(dev, 1);
+
+		debug("%s successfully connected to %s\n",
+		      dev->name, data->disp_drv_name);
+
+		return 0;
 	}
 
-	debug("%s: lcd display not found (ret=%d)\n", __func__, ret);
+	debug("%s: %s not found (ret=%d)\n", __func__,
+	      data->disp_drv_name, ret);
 
-	ret = uclass_get_device_by_driver(UCLASS_DISPLAY,
-					  DM_DRIVER_GET(sunxi_dw_hdmi), &disp);
-	if (!ret) {
-		int mux;
-		if (IS_ENABLED(CONFIG_MACH_SUNXI_H3_H5))
-			mux = 0;
-		else
-			mux = 1;
-
-		ret = sunxi_de2_init(dev, plat->base, VIDEO_BPP32, disp, mux,
-				     false);
-		if (!ret) {
-			video_set_flush_dcache(dev, 1);
-			return 0;
-		}
-	}
-
-	debug("%s: hdmi display not found (ret=%d)\n", __func__, ret);
-
-	return -ENODEV;
+	return ret;
 }
 
 static int sunxi_de2_bind(struct udevice *dev)
@@ -285,20 +287,48 @@ static int sunxi_de2_bind(struct udevice *dev)
 	return 0;
 }
 
+const struct sunxi_de2_data h3_mixer_0 = {
+	.id = 0,
+	.disp_drv_name = "sunxi_dw_hdmi",
+};
+
+const struct sunxi_de2_data a64_mixer_0 = {
+	.id = 0,
+	.disp_drv_name = "sunxi_lcd",
+};
+
+const struct sunxi_de2_data a64_mixer_1 = {
+	.id = 1,
+	.disp_drv_name = "sunxi_dw_hdmi",
+};
+
+static const struct udevice_id sunxi_de2_ids[] = {
+	{
+		.compatible = "allwinner,sun8i-h3-de2-mixer-0",
+		.data = (ulong)&h3_mixer_0,
+	},
+	{
+		.compatible = "allwinner,sun50i-a64-de2-mixer-0",
+		.data = (ulong)&a64_mixer_0,
+	},
+	{
+		.compatible = "allwinner,sun50i-a64-de2-mixer-1",
+		.data = (ulong)&a64_mixer_1,
+	},
+	{ }
+};
+
 static const struct video_ops sunxi_de2_ops = {
 };
 
 U_BOOT_DRIVER(sunxi_de2) = {
 	.name	= "sunxi_de2",
 	.id	= UCLASS_VIDEO,
+	.of_match = sunxi_de2_ids,
 	.ops	= &sunxi_de2_ops,
 	.bind	= sunxi_de2_bind,
 	.probe	= sunxi_de2_probe,
 	.flags	= DM_FLAG_PRE_RELOC,
-};
-
-U_BOOT_DRVINFO(sunxi_de2) = {
-	.name = "sunxi_de2"
 };
 
 /*
