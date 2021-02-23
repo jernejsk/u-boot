@@ -6,6 +6,7 @@
  */
 
 #include <common.h>
+#include <clk.h>
 #include <display.h>
 #include <dm.h>
 #include <edid.h>
@@ -14,10 +15,10 @@
 #include <fdt_support.h>
 #include <log.h>
 #include <part.h>
+#include <reset.h>
 #include <video.h>
 #include <asm/global_data.h>
 #include <asm/io.h>
-#include <asm/arch/clock.h>
 #include <asm/arch/display2.h>
 #include <linux/bitops.h>
 #include "simplefb_common.h"
@@ -36,40 +37,10 @@ struct sunxi_de2_data {
 	const char *disp_drv_name;
 };
 
-static void sunxi_de2_composer_init(void)
-{
-	struct sunxi_ccm_reg * const ccm =
-		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
-
-#ifdef CONFIG_MACH_SUN50I
-	u32 reg_value;
-
-	/* set SRAM for video use (A64 only) */
-	reg_value = readl(SUNXI_SRAMC_BASE + 0x04);
-	reg_value &= ~(0x01 << 24);
-	writel(reg_value, SUNXI_SRAMC_BASE + 0x04);
-#endif
-
-	clock_set_pll10(432000000);
-
-	/* Set DE parent to pll10 */
-	clrsetbits_le32(&ccm->de_clk_cfg, CCM_DE2_CTRL_PLL_MASK,
-			CCM_DE2_CTRL_PLL10);
-
-	/* Set ahb gating to pass */
-	setbits_le32(&ccm->ahb_reset1_cfg, 1 << AHB_RESET_OFFSET_DE);
-	setbits_le32(&ccm->ahb_gate1, 1 << AHB_GATE_OFFSET_DE);
-
-	/* Clock on */
-	setbits_le32(&ccm->de_clk_cfg, CCM_DE2_CTRL_GATE);
-}
-
-static void sunxi_de2_mode_set(ulong de_mux_base, int mux,
+static void sunxi_de2_mode_set(ulong de_mux_base,
 			       const struct display_timing *mode,
 			       int bpp, ulong address, bool is_composite)
 {
-	struct de_clk * const de_clk_regs =
-		(struct de_clk *)(SUNXI_DE2_BASE);
 	struct de_glb * const de_glb_regs =
 		(struct de_glb *)(de_mux_base +
 				  SUNXI_DE2_MUX_GLB_REGS);
@@ -86,17 +57,6 @@ static void sunxi_de2_mode_set(ulong de_mux_base, int mux,
 	u32 size = SUNXI_DE2_WH(mode->hactive.typ, mode->vactive.typ);
 	int channel;
 	u32 format;
-
-	/* enable clock */
-#ifdef CONFIG_MACH_SUN8I_H3
-	setbits_le32(&de_clk_regs->rst_cfg, (mux == 0) ? 1 : 4);
-#else
-	setbits_le32(&de_clk_regs->rst_cfg, BIT(mux));
-#endif
-	setbits_le32(&de_clk_regs->gate_cfg, BIT(mux));
-	setbits_le32(&de_clk_regs->bus_cfg, BIT(mux));
-
-	clrbits_le32(&de_clk_regs->sel_cfg, 1);
 
 	writel(SUNXI_DE2_MUX_GLB_CTL_EN, &de_glb_regs->ctl);
 	writel(0, &de_glb_regs->status);
@@ -189,6 +149,8 @@ static int sunxi_de2_init(struct udevice *dev, ulong fbbase,
 	struct video_priv *uc_priv = dev_get_uclass_priv(dev);
 	struct display_timing timing;
 	struct display_plat *disp_uc_plat;
+	struct reset_ctl_bulk resets;
+	struct clk_bulk clocks;
 	int ret;
 
 	disp_uc_plat = dev_get_uclass_plat(disp);
@@ -206,8 +168,23 @@ static int sunxi_de2_init(struct udevice *dev, ulong fbbase,
 		return ret;
 	}
 
-	sunxi_de2_composer_init();
-	sunxi_de2_mode_set((ulong)dev_read_addr(dev), mux, &timing,
+	ret = reset_get_bulk(dev, &resets);
+	if (ret)
+		return ret;
+
+	ret = clk_get_bulk(dev, &clocks);
+	if (ret)
+		return ret;
+
+	ret = clk_enable_bulk(&clocks);
+	if (ret)
+		return ret;
+
+	ret = reset_deassert_bulk(&resets);
+	if (ret)
+		return ret;
+
+	sunxi_de2_mode_set((ulong)dev_read_addr(dev), &timing,
 			   1 << l2bpp, fbbase, is_composite);
 
 	ret = display_enable(disp, 1 << l2bpp, &timing);
