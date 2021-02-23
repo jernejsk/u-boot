@@ -64,11 +64,10 @@ static void sunxi_de2_composer_init(void)
 	setbits_le32(&ccm->de_clk_cfg, CCM_DE2_CTRL_GATE);
 }
 
-static void sunxi_de2_mode_set(int mux, const struct display_timing *mode,
+static void sunxi_de2_mode_set(ulong de_mux_base, int mux,
+			       const struct display_timing *mode,
 			       int bpp, ulong address, bool is_composite)
 {
-	ulong de_mux_base = (mux == 0) ?
-			    SUNXI_DE2_MUX0_BASE : SUNXI_DE2_MUX1_BASE;
 	struct de_clk * const de_clk_regs =
 		(struct de_clk *)(SUNXI_DE2_BASE);
 	struct de_glb * const de_glb_regs =
@@ -208,7 +207,8 @@ static int sunxi_de2_init(struct udevice *dev, ulong fbbase,
 	}
 
 	sunxi_de2_composer_init();
-	sunxi_de2_mode_set(mux, &timing, 1 << l2bpp, fbbase, is_composite);
+	sunxi_de2_mode_set((ulong)dev_read_addr(dev), mux, &timing,
+			   1 << l2bpp, fbbase, is_composite);
 
 	ret = display_enable(disp, 1 << l2bpp, &timing);
 	if (ret) {
