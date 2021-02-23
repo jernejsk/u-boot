@@ -26,6 +26,9 @@ static const struct ccu_clk_gate a64_gates[] = {
 	[CLK_BUS_OHCI0]		= GATE(0x060, BIT(28)),
 	[CLK_BUS_OHCI1]		= GATE(0x060, BIT(29)),
 
+	[CLK_BUS_HDMI]		= GATE(0x064, BIT(11)),
+	[CLK_BUS_DE]		= GATE(0x064, BIT(12)),
+
 	[CLK_BUS_UART0]		= GATE(0x06c, BIT(16)),
 	[CLK_BUS_UART1]		= GATE(0x06c, BIT(17)),
 	[CLK_BUS_UART2]		= GATE(0x06c, BIT(18)),
@@ -41,6 +44,11 @@ static const struct ccu_clk_gate a64_gates[] = {
 	[CLK_USB_HSIC_12M]	= GATE(0x0cc, BIT(11)),
 	[CLK_USB_OHCI0]		= GATE(0x0cc, BIT(16)),
 	[CLK_USB_OHCI1]		= GATE(0x0cc, BIT(17)),
+
+	[CLK_DE]		= GATE(0x104, BIT(31)),
+
+	[CLK_HDMI]		= GATE(0x150, BIT(31)),
+	[CLK_HDMI_DDC]		= GATE(0x154, BIT(31)),
 };
 
 static const struct ccu_reset a64_resets[] = {
@@ -59,6 +67,10 @@ static const struct ccu_reset a64_resets[] = {
 	[RST_BUS_EHCI1]         = RESET(0x2c0, BIT(25)),
 	[RST_BUS_OHCI0]         = RESET(0x2c0, BIT(28)),
 	[RST_BUS_OHCI1]         = RESET(0x2c0, BIT(29)),
+
+	[RST_BUS_HDMI0]		= RESET(0x2c4, BIT(10)),
+	[RST_BUS_HDMI1]		= RESET(0x2c4, BIT(11)),
+	[RST_BUS_DE]		= RESET(0x2c4, BIT(12)),
 
 	[RST_BUS_UART0]		= RESET(0x2d8, BIT(16)),
 	[RST_BUS_UART1]		= RESET(0x2d8, BIT(17)),
