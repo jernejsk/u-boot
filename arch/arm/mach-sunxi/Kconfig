@@ -973,6 +973,7 @@ config VIDEO_DE2
 	select CLK_SUN8I_DE2
 	select DM_VIDEO
 	select DISPLAY
+	select PHY
 	select VIDEO_DW_HDMI
 	select SUNXI_DE2_BUS if MACH_SUN50I
 	imply VIDEO_DT_SIMPLEFB
