@@ -5,188 +5,24 @@
  * (C) Copyright 2017 Jernej Skrabec <jernej.skrabec@siol.net>
  */
 
+#include <clk.h>
 #include <common.h>
 #include <display.h>
 #include <dm.h>
 #include <dw_hdmi.h>
 #include <edid.h>
-#include <log.h>
-#include <time.h>
+#include <generic-phy.h>
+#include <reset.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/lcdc.h>
 #include <linux/bitops.h>
-#include <linux/delay.h>
+#include "sunxi_dw_hdmi_phy.h"
 
 struct sunxi_dw_hdmi_priv {
 	struct dw_hdmi hdmi;
+	struct phy phy;
 };
-
-struct sunxi_hdmi_phy {
-	u32 pol;
-	u32 res1[3];
-	u32 read_en;
-	u32 unscramble;
-	u32 res2[2];
-	u32 ctrl;
-	u32 unk1;
-	u32 unk2;
-	u32 pll;
-	u32 clk;
-	u32 unk3;
-	u32 status;
-};
-
-#define HDMI_PHY_OFFS 0x10000
-
-static int sunxi_dw_hdmi_get_divider(uint clock)
-{
-	/*
-	 * Due to missing documentaion of HDMI PHY, we know correct
-	 * settings only for following four PHY dividers. Select one
-	 * based on clock speed.
-	 */
-	if (clock <= 27000000)
-		return 11;
-	else if (clock <= 74250000)
-		return 4;
-	else if (clock <= 148500000)
-		return 2;
-	else
-		return 1;
-}
-
-static void sunxi_dw_hdmi_phy_init(struct dw_hdmi *hdmi)
-{
-	struct sunxi_hdmi_phy * const phy =
-		(struct sunxi_hdmi_phy *)(hdmi->ioaddr + HDMI_PHY_OFFS);
-	unsigned long tmo;
-	u32 tmp;
-
-	/*
-	 * HDMI PHY settings are taken as-is from Allwinner BSP code.
-	 * There is no documentation.
-	 */
-	writel(0, &phy->ctrl);
-	setbits_le32(&phy->ctrl, BIT(0));
-	udelay(5);
-	setbits_le32(&phy->ctrl, BIT(16));
-	setbits_le32(&phy->ctrl, BIT(1));
-	udelay(10);
-	setbits_le32(&phy->ctrl, BIT(2));
-	udelay(5);
-	setbits_le32(&phy->ctrl, BIT(3));
-	udelay(40);
-	setbits_le32(&phy->ctrl, BIT(19));
-	udelay(100);
-	setbits_le32(&phy->ctrl, BIT(18));
-	setbits_le32(&phy->ctrl, 7 << 4);
-
-	/* Note that Allwinner code doesn't fail in case of timeout */
-	tmo = timer_get_us() + 2000;
-	while ((readl(&phy->status) & 0x80) == 0) {
-		if (timer_get_us() > tmo) {
-			printf("Warning: HDMI PHY init timeout!\n");
-			break;
-		}
-	}
-
-	setbits_le32(&phy->ctrl, 0xf << 8);
-	setbits_le32(&phy->ctrl, BIT(7));
-
-	writel(0x39dc5040, &phy->pll);
-	writel(0x80084343, &phy->clk);
-	udelay(10000);
-	writel(1, &phy->unk3);
-	setbits_le32(&phy->pll, BIT(25));
-	udelay(100000);
-	tmp = (readl(&phy->status) & 0x1f800) >> 11;
-	setbits_le32(&phy->pll, BIT(31) | BIT(30));
-	setbits_le32(&phy->pll, tmp);
-	writel(0x01FF0F7F, &phy->ctrl);
-	writel(0x80639000, &phy->unk1);
-	writel(0x0F81C405, &phy->unk2);
-
-	/* enable read access to HDMI controller */
-	writel(0x54524545, &phy->read_en);
-	/* descramble register offsets */
-	writel(0x42494E47, &phy->unscramble);
-}
-
-static void sunxi_dw_hdmi_phy_set(struct dw_hdmi *hdmi, uint clock, int phy_div)
-{
-	struct sunxi_hdmi_phy * const phy =
-		(struct sunxi_hdmi_phy *)(hdmi->ioaddr + HDMI_PHY_OFFS);
-	int div = sunxi_dw_hdmi_get_divider(clock);
-	u32 tmp;
-
-	/*
-	 * Unfortunately, we don't know much about those magic
-	 * numbers. They are taken from Allwinner BSP driver.
-	 */
-	switch (div) {
-	case 1:
-		writel(0x30dc5fc0, &phy->pll);
-		writel(0x800863C0 | (phy_div - 1), &phy->clk);
-		mdelay(10);
-		writel(0x00000001, &phy->unk3);
-		setbits_le32(&phy->pll, BIT(25));
-		mdelay(200);
-		tmp = (readl(&phy->status) & 0x1f800) >> 11;
-		setbits_le32(&phy->pll, BIT(31) | BIT(30));
-		if (tmp < 0x3d)
-			setbits_le32(&phy->pll, tmp + 2);
-		else
-			setbits_le32(&phy->pll, 0x3f);
-		mdelay(100);
-		writel(0x01FFFF7F, &phy->ctrl);
-		writel(0x8063b000, &phy->unk1);
-		writel(0x0F8246B5, &phy->unk2);
-		break;
-	case 2:
-		writel(0x39dc5040, &phy->pll);
-		writel(0x80084380 | (phy_div - 1), &phy->clk);
-		mdelay(10);
-		writel(0x00000001, &phy->unk3);
-		setbits_le32(&phy->pll, BIT(25));
-		mdelay(100);
-		tmp = (readl(&phy->status) & 0x1f800) >> 11;
-		setbits_le32(&phy->pll, BIT(31) | BIT(30));
-		setbits_le32(&phy->pll, tmp);
-		writel(0x01FFFF7F, &phy->ctrl);
-		writel(0x8063a800, &phy->unk1);
-		writel(0x0F81C485, &phy->unk2);
-		break;
-	case 4:
-		writel(0x39dc5040, &phy->pll);
-		writel(0x80084340 | (phy_div - 1), &phy->clk);
-		mdelay(10);
-		writel(0x00000001, &phy->unk3);
-		setbits_le32(&phy->pll, BIT(25));
-		mdelay(100);
-		tmp = (readl(&phy->status) & 0x1f800) >> 11;
-		setbits_le32(&phy->pll, BIT(31) | BIT(30));
-		setbits_le32(&phy->pll, tmp);
-		writel(0x01FFFF7F, &phy->ctrl);
-		writel(0x8063b000, &phy->unk1);
-		writel(0x0F81C405, &phy->unk2);
-		break;
-	case 11:
-		writel(0x39dc5040, &phy->pll);
-		writel(0x80084300 | (phy_div - 1), &phy->clk);
-		mdelay(10);
-		writel(0x00000001, &phy->unk3);
-		setbits_le32(&phy->pll, BIT(25));
-		mdelay(100);
-		tmp = (readl(&phy->status) & 0x1f800) >> 11;
-		setbits_le32(&phy->pll, BIT(31) | BIT(30));
-		setbits_le32(&phy->pll, tmp);
-		writel(0x01FFFF7F, &phy->ctrl);
-		writel(0x8063b000, &phy->unk1);
-		writel(0x0F81C405, &phy->unk2);
-		break;
-	}
-}
 
 static void sunxi_dw_hdmi_pll_set(uint clk_khz, int *phy_div)
 {
@@ -268,10 +104,12 @@ static void sunxi_dw_hdmi_lcdc_init(int mux, const struct display_timing *edid,
 static int sunxi_dw_hdmi_phy_cfg(struct dw_hdmi *hdmi,
 				 const struct display_timing *edid)
 {
+	struct sunxi_dw_hdmi_priv *priv =
+		container_of(hdmi, struct sunxi_dw_hdmi_priv, hdmi);
 	int phy_div;
 
 	sunxi_dw_hdmi_pll_set(edid->pixelclock.typ / 1000, &phy_div);
-	sunxi_dw_hdmi_phy_set(hdmi, edid->pixelclock.typ, phy_div);
+	sunxi_dw_hdmi_phy_set(&priv->phy, edid, phy_div);
 
 	return 0;
 }
@@ -293,8 +131,6 @@ static int sunxi_dw_hdmi_enable(struct udevice *dev, int panel_bpp,
 				const struct display_timing *edid)
 {
 	struct sunxi_dw_hdmi_priv *priv = dev_get_priv(dev);
-	struct sunxi_hdmi_phy * const phy =
-		(struct sunxi_hdmi_phy *)(priv->hdmi.ioaddr + HDMI_PHY_OFFS);
 	struct display_plat *uc_plat = dev_get_uclass_plat(dev);
 	int ret;
 
@@ -304,21 +140,13 @@ static int sunxi_dw_hdmi_enable(struct udevice *dev, int panel_bpp,
 
 	sunxi_dw_hdmi_lcdc_init(uc_plat->source_id, edid, panel_bpp);
 
-	if (edid->flags & DISPLAY_FLAGS_VSYNC_LOW)
-		setbits_le32(&phy->pol, 0x200);
-
-	if (edid->flags & DISPLAY_FLAGS_HSYNC_LOW)
-		setbits_le32(&phy->pol, 0x100);
-
-	setbits_le32(&phy->ctrl, 0xf << 12);
-
 	/*
 	 * This is last hdmi access before boot, so scramble addresses
 	 * again or othwerwise BSP driver won't work. Dummy read is
 	 * needed or otherwise last write doesn't get written correctly.
 	 */
 	(void)readb(priv->hdmi.ioaddr);
-	writel(0, &phy->unscramble);
+	generic_phy_exit(&priv->phy);
 
 	return 0;
 }
@@ -342,7 +170,13 @@ static int sunxi_dw_hdmi_probe(struct udevice *dev)
 	struct sunxi_dw_hdmi_priv *priv = dev_get_priv(dev);
 	struct sunxi_ccm_reg * const ccm =
 		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
+	struct reset_ctl_bulk resets;
+	struct clk_bulk clocks;
 	int ret;
+
+	ret = generic_phy_get_by_name(dev, "phy", &priv->phy);
+	if (ret)
+		return ret;
 
 	/* Set pll3 to 297 MHz */
 	clock_set_pll3(297000000);
@@ -351,16 +185,29 @@ static int sunxi_dw_hdmi_probe(struct udevice *dev)
 	clrsetbits_le32(&ccm->hdmi_clk_cfg, CCM_HDMI_CTRL_PLL_MASK,
 			CCM_HDMI_CTRL_PLL3);
 
-	/* Set ahb gating to pass */
-	setbits_le32(&ccm->ahb_reset1_cfg, 1 << AHB_RESET_OFFSET_HDMI);
-	setbits_le32(&ccm->ahb_reset1_cfg, 1 << AHB_RESET_OFFSET_HDMI2);
-	setbits_le32(&ccm->ahb_gate1, 1 << AHB_GATE_OFFSET_HDMI);
-	setbits_le32(&ccm->hdmi_slow_clk_cfg, CCM_HDMI_SLOW_CTRL_DDC_GATE);
+	ret = generic_phy_init(&priv->phy);
+	if (ret)
+		return ret;
 
-	/* Clock on */
-	setbits_le32(&ccm->hdmi_clk_cfg, CCM_HDMI_CTRL_GATE);
+	ret = reset_get_bulk(dev, &resets);
+	if (ret)
+		return ret;
 
-	sunxi_dw_hdmi_phy_init(&priv->hdmi);
+	ret = clk_get_bulk(dev, &clocks);
+	if (ret)
+		return ret;
+
+	ret = clk_enable_bulk(&clocks);
+	if (ret)
+		return ret;
+
+	ret = reset_deassert_bulk(&resets);
+	if (ret)
+		return ret;
+
+	ret = generic_phy_power_on(&priv->phy);
+	if (ret)
+		return ret;
 
 	ret = dw_hdmi_phy_wait_for_hpd(&priv->hdmi);
 	if (ret < 0) {
