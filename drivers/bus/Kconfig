@@ -26,4 +26,10 @@ config UNIPHIER_SYSTEM_BUS
 	  Support for UniPhier System Bus, a simple external bus.  This is
 	  needed to use on-board devices connected to UniPhier SoCs.
 
+config SUNXI_DE2_BUS
+	bool "Sunxi DE2 Bus driver"
+	depends on ARCH_SUNXI
+	help
+	  Support for Allwinner DE2 bus.
+
 endmenu
