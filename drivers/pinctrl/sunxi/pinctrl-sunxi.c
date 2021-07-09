@@ -695,7 +695,7 @@ static const struct sunxi_pinctrl_desc __maybe_unused sun50i_h5_pinctrl_desc = {
 };
 
 static const struct sunxi_pinctrl_function sun50i_h6_pinctrl_functions[] = {
-	{ "emac",	5 },	/* PD0-PD20 */
+	{ "emac",	2 },	/* PA0-PA9 */
 	{ "gpio_in",	0 },
 	{ "gpio_out",	1 },
 	{ "i2c0",	2 },	/* PD25-PD26 */

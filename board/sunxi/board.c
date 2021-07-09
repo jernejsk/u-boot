@@ -15,6 +15,7 @@
 #include <dm.h>
 #include <env.h>
 #include <hang.h>
+#include <i2c.h>
 #include <image.h>
 #include <init.h>
 #include <log.h>
@@ -109,6 +110,14 @@ void i2c_init_board(void)
 #endif
 #endif
 
+#ifdef CONFIG_I2C3_ENABLE
+	sunxi_gpio_set_cfgpin(SUNXI_GPB(17), 2);
+	sunxi_gpio_set_cfgpin(SUNXI_GPB(18), 2);
+	sunxi_gpio_set_pull(SUNXI_GPB(17), SUNXI_GPIO_PULL_UP);
+	sunxi_gpio_set_pull(SUNXI_GPB(18), SUNXI_GPIO_PULL_UP);
+	clock_twi_onoff(3, 1);
+#endif
+
 #ifdef CONFIG_R_I2C_ENABLE
 #ifdef CONFIG_MACH_SUN50I
 	clock_twi_onoff(5, 1);
@@ -124,6 +133,9 @@ void i2c_init_board(void)
 	sunxi_gpio_set_cfgpin(SUNXI_GPL(1), SUN8I_H3_GPL_R_TWI);
 #endif
 #endif
+
+	/* PWM1 */
+	sunxi_gpio_set_cfgpin(SUNXI_GPB(19), 2);
 }
 
 /*
@@ -557,6 +569,7 @@ static void sunxi_spl_store_dram_size(phys_addr_t dram_size)
 void sunxi_board_init(void)
 {
 	int power_failed = 0;
+	u8 data[2];
 
 #ifdef CONFIG_LED_STATUS
 	if (IS_ENABLED(CONFIG_SPL_DRIVERS_MISC))
@@ -648,6 +661,22 @@ void sunxi_board_init(void)
 		clock_set_pll1(get_board_sys_clk());
 	else
 		printf("Failed to set core voltage! Can't set CPU frequency\n");
+
+	data[0] = 0;
+	data[1] = 0;
+	i2c_write(0x10, 0xfe, 1, data, 2);
+	i2c_write(0x10, 2, 1, data, 2);
+	data[1] = 1;
+	i2c_write(0x10, 2, 1, data, 2);
+	data[1] = 0xf;
+	i2c_write(0x10, 0x16, 1, data, 2);
+	data[1] = 3;
+	i2c_write(0x10, 0x14, 1, data, 2);
+	data[1] = 0x60;
+	i2c_write(0x10, 0xfe, 1, data, 2);
+	data[0] = 0x08;
+	data[1] = 0x14;
+	i2c_write(0x10, 0, 1, data, 2);
 }
 #endif /* CONFIG_SPL_BUILD */
 

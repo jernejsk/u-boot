@@ -8,6 +8,26 @@
 / {
 	model = "Tanix TX6";
 	compatible = "oranth,tanix-tx6", "allwinner,sun50i-h6";
+
+	aliases {
+		ethernet0 = &emac;
+		serial0 = &uart0;
+	};
+};
+
+&emac {
+	pinctrl-names = "default";
+	pinctrl-0 = <&ext_rmii_pins>;
+	phy-mode = "rmii";
+	phy-handle = <&rmii_phy>;
+	status = "okay";
+};
+
+&mdio {
+	rmii_phy: ethernet-phy@1 {
+		compatible = "ethernet-phy-ieee802.3-c22";
+		reg = <1>;
+	};
 };
 
 &r_ir {
