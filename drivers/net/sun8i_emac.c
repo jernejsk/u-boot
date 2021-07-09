@@ -563,7 +563,7 @@ static int parse_phy_pins(struct udevice *dev)
 	else if (IS_ENABLED(CONFIG_MACH_SUN8I_R40))
 		iomux = SUN8I_IOMUX_R40;
 	else if (IS_ENABLED(CONFIG_MACH_SUN50I_H6))
-		iomux = SUN8I_IOMUX_H6;
+		iomux = 2;
 	else if (IS_ENABLED(CONFIG_MACH_SUN50I_H616))
 		iomux = SUN8I_IOMUX_H616;
 	else if (IS_ENABLED(CONFIG_MACH_SUN8I_A83T))
