@@ -16,6 +16,8 @@ void clock_init_safe(void)
 		/* this seems to enable PLLs on H616 */
 		setbits_le32(&prcm->sys_pwroff_gating, 0x10);
 		setbits_le32(&prcm->res_cal_ctrl, 2);
+		/* enable GPU */
+		writel(0, 0x7010254);
 	}
 
 	if (IS_ENABLED(CONFIG_MACH_SUN50I_H616) ||
