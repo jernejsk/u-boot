@@ -460,6 +460,7 @@ void board_init_f(ulong dummy)
 	/* Needed early by sunxi_board_init if PMU is enabled */
 	i2c_init_board();
 	i2c_init(CONFIG_SYS_I2C_SPEED, CONFIG_SYS_I2C_SLAVE);
+	i2c_set_bus_num(0);
 #endif
 	sunxi_board_init();
 }

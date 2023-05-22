@@ -909,6 +909,11 @@ static const struct emac_variant emac_variant_h6 = {
 	.support_rmii		= true,
 };
 
+static const struct emac_variant emac_variant_h616_1 = {
+	.syscon_offset		= 0x34,
+	.support_rmii		= true,
+};
+
 static const struct udevice_id sun8i_emac_eth_ids[] = {
 	{ .compatible = "allwinner,sun8i-a83t-emac",
 	  .data = (ulong)&emac_variant_a83t },
@@ -920,6 +925,8 @@ static const struct udevice_id sun8i_emac_eth_ids[] = {
 	  .data = (ulong)&emac_variant_a64 },
 	{ .compatible = "allwinner,sun50i-h6-emac",
 	  .data = (ulong)&emac_variant_h6 },
+	{ .compatible = "allwinner,sun50i-h616-emac1",
+	  .data = (ulong)&emac_variant_h616_1 },
 	{ }
 };
 

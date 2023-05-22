@@ -771,6 +771,15 @@ config I2C1_ENABLE
 	---help---
 	See I2C0_ENABLE help text.
 
+if MACH_SUN50I_H616
+config I2C3_ENABLE
+	bool "Enable I2C/TWI controller 3"
+	default n
+	select CMD_I2C
+	---help---
+	See I2C0_ENABLE help text.
+endif
+
 if SUNXI_GEN_SUN6I || SUN50I_GEN_H6
 config R_I2C_ENABLE
 	bool "Enable the PRCM I2C/TWI controller"

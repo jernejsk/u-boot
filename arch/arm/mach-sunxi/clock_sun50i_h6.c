@@ -46,6 +46,10 @@ void clock_init_safe(void)
 	 * DRAM initialization code.
 	 */
 	writel(MBUS_CLK_SRC_PLL6X2 | MBUS_CLK_M(3), &ccm->mbus_cfg);
+
+	writel(0x10001, 0x030017ac);
+	writel(0x50, 0x0300a028);
+	writel(0x20, 0x0300a040);
 }
 #endif
 
