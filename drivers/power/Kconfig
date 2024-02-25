@@ -126,6 +126,15 @@ config AXP818_POWER
 	Say y here to enable support for the axp818 pmic found on
 	A83T dev board.
 
+config AXP858_POWER
+	bool "axp858 pmic support"
+	depends on MACH_SUN50I_H616
+	select AXP_PMIC_BUS
+	select CMD_POWEROFF
+	---help---
+	Say y here to enable support for the axp858 pmic found on
+	T507 boards.
+
 config SY8106A_POWER
 	bool "SY8106A pmic support"
 	depends on MACH_SUNXI_H3_H5
@@ -151,12 +160,12 @@ config AXP_DCDC1_VOLT
 
 config AXP_DCDC2_VOLT
 	int "axp pmic dcdc2 voltage"
-	depends on AXP152_POWER || AXP209_POWER || AXP221_POWER || AXP809_POWER || AXP818_POWER || AXP313_POWER
+	depends on AXP152_POWER || AXP209_POWER || AXP221_POWER || AXP809_POWER || AXP818_POWER || AXP313_POWER || AXP858_POWER
 	default 900 if AXP818_POWER
 	default 1400 if AXP152_POWER || AXP209_POWER
 	default 1000 if AXP313_POWER
 	default 1200 if MACH_SUN6I
-	default 1100 if MACH_SUN8I
+	default 1100 if MACH_SUN8I || AXP858_POWER
 	default 0 if MACH_SUN9I
 	---help---
 	Set the voltage (mV) to program the axp pmic dcdc2 at, set to 0 to
@@ -171,13 +180,14 @@ config AXP_DCDC2_VOLT
 
 config AXP_DCDC3_VOLT
 	int "axp pmic dcdc3 voltage"
-	depends on AXP152_POWER || AXP209_POWER || AXP221_POWER || AXP809_POWER || AXP818_POWER || AXP313_POWER
+	depends on AXP152_POWER || AXP209_POWER || AXP221_POWER || AXP809_POWER || AXP818_POWER || AXP313_POWER || AXP858_POWER
 	default 900 if AXP809_POWER || AXP818_POWER
 	default 1500 if AXP152_POWER
 	default 1250 if AXP209_POWER
 	default 1100 if AXP313_POWER
 	default 1100 if MACH_SUN8I_R40
 	default 1200 if MACH_SUN6I || MACH_SUN8I
+	default 940 if AXP858_POWER
 	---help---
 	Set the voltage (mV) to program the axp pmic dcdc3 at, set to 0 to
 	disable dcdc3.
@@ -210,8 +220,8 @@ config AXP_DCDC4_VOLT
 
 config AXP_DCDC5_VOLT
 	int "axp pmic dcdc5 voltage"
-	depends on AXP221_POWER || AXP809_POWER || AXP818_POWER
-	default 1500 if MACH_SUN6I || MACH_SUN8I || MACH_SUN9I
+	depends on AXP221_POWER || AXP809_POWER || AXP818_POWER || AXP858_POWER
+	default 1500 if MACH_SUN6I || MACH_SUN8I || MACH_SUN9I || AXP858_POWER
 	---help---
 	Set the voltage (mV) to program the axp pmic dcdc5 at, set to 0 to
 	disable dcdc5.
