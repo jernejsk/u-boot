@@ -37,6 +37,7 @@ enum {
 	AXP806_ID,
 	AXP809_ID,
 	AXP813_ID,
+	AXP858_ID,
 };
 
 int axp_set_dcdc1(unsigned int mvolt);

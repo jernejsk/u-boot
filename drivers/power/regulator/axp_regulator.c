@@ -284,6 +284,32 @@ static const struct axp_regulator_plat axp813_regulators[] = {
 	{ }
 };
 
+static const struct axp_regulator_plat axp858_regulators[] = {
+	{ "dcdc1",   0x10, BIT(0), 0x13, 0x1f, 1500, 3400, 100, NA },
+	{ "dcdc2",   0x10, BIT(1), 0x14, 0x7f,  500, 1540,  10, 70 },
+	{ "dcdc3",   0x10, BIT(2), 0x15, 0x7f,  500, 1540,  10, 70 },
+	{ "dcdc4",   0x10, BIT(3), 0x16, 0x7f,  500, 1540,  10, 70 },
+	{ "dcdc5",   0x10, BIT(4), 0x17, 0x7f,  800, 1840,  10, 32 },
+	{ "dcdc6",   0x10, BIT(5), 0x18, 0x1f, 1500, 3400, 100, NA },
+	{ "aldo1",   0x11, BIT(0), 0x19, 0x1f,  700, 3300, 100, NA },
+	{ "aldo2",   0x11, BIT(1), 0x20, 0x1f,  700, 3300, 100, NA },
+	{ "aldo3",   0x11, BIT(2), 0x21, 0x1f,  700, 3300, 100, NA },
+	{ "aldo4",   0x11, BIT(3), 0x22, 0x1f,  700, 3300, 100, NA },
+	{ "aldo5",   0x11, BIT(4), 0x23, 0x1f,  700, 3300, 100, NA },
+	{ "bldo1",   0x11, BIT(5), 0x24, 0x1f,  700, 3300, 100, NA },
+	{ "bldo2",   0x11, BIT(6), 0x25, 0x1f,  700, 3300, 100, NA },
+	{ "bldo3",   0x11, BIT(7), 0x26, 0x1f,  700, 3300, 100, NA },
+	{ "bldo4",   0x12, BIT(0), 0x27, 0x1f,  700, 3300, 100, NA },
+	{ "bldo5",   0x12, BIT(1), 0x28, 0x1f,  700, 3300, 100, NA },
+	{ "cldo1",   0x12, BIT(2), 0x29, 0x1f,  700, 3300, 100, NA },
+	{ "cldo2",   0x12, BIT(3), 0x2a, 0x1f,  700, 3300, 100, NA },
+	{ "cldo3",   0x12, BIT(4), 0x2b, 0x1f,  700, 3300, 100, NA },
+	{ "cldo4",   0x12, BIT(5), 0x2d, 0x3f,  700, 4200, 100, NA },
+	{ "cpusldo", 0x12, BIT(6), 0x2e, 0x0f,  700, 1400,  50, NA },
+	{ "sw",      0x12, BIT(7),   NA,   NA,   NA,   NA,  NA, NA },
+	{ }
+};
+
 static const struct axp_regulator_plat *const axp_regulators[] = {
 	[AXP152_ID]	= axp152_regulators,
 	[AXP202_ID]	= axp20x_regulators,
@@ -295,6 +321,7 @@ static const struct axp_regulator_plat *const axp_regulators[] = {
 	[AXP806_ID]	= axp806_regulators,
 	[AXP809_ID]	= axp809_regulators,
 	[AXP813_ID]	= axp813_regulators,
+	[AXP858_ID]	= axp858_regulators,
 };
 
 static int axp_regulator_bind(struct udevice *dev)
