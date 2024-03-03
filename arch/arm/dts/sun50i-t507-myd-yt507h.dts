@@ -1,0 +1,327 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (C) 2024 Jernej Skrabec <jernej.skrabec@gmail.com>
+ */
+
+/dts-v1/;
+
+#include "sun50i-h616.dtsi"
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/leds/common.h>
+
+/ {
+	model = "OKT507-C";
+	compatible = "myir,myd-yt507h", "allwinner,sun50i-t507";
+
+	aliases {
+		ethernet0 = &emac0;
+		ethernet1 = &emac1;
+		serial0 = &uart0;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led-0 {
+			function = LED_FUNCTION_POWER;
+			color = <LED_COLOR_ID_BLUE>;
+			gpios = <&pio 4 19 GPIO_ACTIVE_HIGH>; /* PE19 */
+			default-state = "on";
+		};
+	};
+
+	reg_vcc5v: vcc5v {
+		compatible = "regulator-fixed";
+		regulator-name = "vcc-5v";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		regulator-always-on;
+	};
+
+	reg_vcc3v3: vcc3v3 {
+		compatible = "regulator-fixed";
+		vin-supply = <&reg_vcc5v>;
+		regulator-name = "vcc-3v3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
+	reg_vcc3v3_io: vcc3v3-io {
+		compatible = "regulator-fixed";
+		vin-supply = <&reg_vcc3v3>;
+		regulator-name = "vcc-3v3-io";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		enable-active-high;
+		gpio = <&pio 3 22 GPIO_ACTIVE_HIGH>; /* PD22 */
+	};
+};
+
+&cpu0 {
+	cpu-supply = <&reg_dcdc2>;
+};
+
+&ehci1 {
+	status = "okay";
+};
+
+&ehci3 {
+	status = "okay";
+};
+
+&emac0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&ext_rgmii_pins>;
+	phy-handle = <&ext_rgmii_phy>;
+	allwinner,tx-delay-ps = <500>;
+	allwinner,rx-delay-ps = <1400>;
+	phy-mode = "rgmii";
+	phy-supply = <&reg_vcc3v3_io>;
+	status = "okay";
+};
+
+&emac1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&rmii_pins>;
+	phy-mode = "rmii";
+	phy-handle = <&ext_rmii_phy>;
+	phy-supply = <&reg_dcdc6>;
+	allwinner,tx-delay-ps = <700>;
+	allwinner,rx-delay-ps = <0>;
+	status = "okay";
+};
+
+&mdio0 {
+	ext_rgmii_phy: ethernet-phy@2 {
+		compatible = "ethernet-phy-id0000.010a",
+			     "ethernet-phy-ieee802.3-c22";
+		reg = <2>;
+		clocks = <&ccu CLK_EMAC_25M>;
+		reset-gpios = <&pio 8 6 GPIO_ACTIVE_LOW>; /* PI6 */
+		reset-assert-us = <100000>;
+		reset-deassert-us = <10000>;
+		motorcomm,clk-out-frequency-hz = <125000000>;
+	};
+};
+
+&mdio1 {
+	ext_rmii_phy: ethernet-phy@1 {
+		compatible = "ethernet-phy-id0000.0128",
+			     "ethernet-phy-ieee802.3-c22";
+		reg = <1>;
+		reset-gpios = <&pio 7 5 GPIO_ACTIVE_LOW>; /* PH5 */
+		reset-assert-us = <100000>;
+		reset-deassert-us = <10000>;
+	};
+};
+
+&mmc0 {
+	cd-gpios = <&pio 5 6 GPIO_ACTIVE_LOW>;	/* PF6 */
+	vmmc-supply = <&reg_dcdc1>;
+	bus-width = <4>;
+	status = "okay";
+};
+
+&mmc2 {
+	vmmc-supply = <&reg_dcdc1>;
+	vqmmc-supply = <&reg_aldo1>;
+	bus-width = <8>;
+	non-removable;
+	cap-mmc-hw-reset;
+	mmc-hs200-1_8v;
+	status = "okay";
+};
+
+&ohci1 {
+	status = "okay";
+};
+
+&ohci3 {
+	status = "okay";
+};
+
+&pio {
+	vcc-pa-supply = <&reg_dcdc1>;
+	vcc-pc-supply = <&reg_aldo1>;
+	vcc-pd-supply = <&reg_sw>;
+	vcc-pe-supply = <&reg_aldo5>;
+	vcc-pf-supply = <&reg_dcdc1>;
+	vcc-pg-supply = <&reg_dcdc1>;
+	vcc-ph-supply = <&reg_dcdc1>;
+	vcc-pi-supply = <&reg_dcdc6>;
+};
+
+&r_i2c {
+	status = "okay";
+
+	axp858: pmic@36 {
+		compatible = "x-powers,axp858",
+			     "x-powers,axp15060";
+		reg = <0x36>;
+		#interrupt-cells = <1>;
+		interrupt-controller;
+		/*interrupt-parent = <&r_intc>;
+		interrupts = <0 IRQ_TYPE_LEVEL_LOW>;*/
+
+		vin1-supply = <&reg_vcc5v>;
+		vin2-supply = <&reg_vcc5v>;
+		vin3-supply = <&reg_vcc5v>;
+		vin4-supply = <&reg_vcc5v>;
+		vin5-supply = <&reg_vcc5v>;
+		vin6-supply = <&reg_vcc5v>;
+		aldoin-supply = <&reg_vcc5v>;
+		bldoin-supply = <&reg_vcc5v>;
+		cldoin-supply = <&reg_vcc5v>;
+		ips-supply = <&reg_vcc5v>;
+		swin-supply = <&reg_dcdc1>;
+
+		regulators {
+			reg_aldo1: aldo1 {
+				regulator-always-on;
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-name = "vcc1v8-emmc";
+			};
+
+			reg_aldo2: aldo2 {
+				regulator-always-on;
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-name = "vcc1v8-pll-sd";
+			};
+
+			aldo3 {
+				/* unused */
+			};
+
+			aldo4 {
+				regulator-always-on;
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-name = "vcc1v8-dram";
+			};
+
+			reg_aldo5: aldo5 {
+				regulator-always-on;
+				regulator-min-microvolt = <2800000>;
+				regulator-max-microvolt = <2800000>;
+				regulator-name = "vcc3v3-pe-cam";
+			};
+
+			reg_bldo1: bldo1 {
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-name = "vcc1v8-hdmi-lvds-mcsi";
+			};
+
+			bldo2 {
+				/* unused */
+			};
+
+			bldo3 {
+				/* unused */
+			};
+
+			bldo4 {
+				/* unused */
+			};
+
+			bldo5 {
+				/* unused */
+			};
+
+			cldo1 {
+				/* unused */
+			};
+
+			cldo2 {
+				/* unused */
+			};
+
+			cldo3 {
+				/* unused */
+			};
+
+			reg_cldo4: cldo4 {
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-name = "vcc1v8-tv";
+			};
+
+			cpusldo {
+				/* unused */
+			};
+
+			reg_dcdc1: dcdc1 {
+				regulator-always-on;
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-name = "vcc3v3-io-pa-pg-usb-sd-emmc";
+			};
+
+			reg_dcdc2: dcdc2 {
+				regulator-always-on;
+				regulator-min-microvolt = <810000>;
+				regulator-max-microvolt = <1100000>;
+				regulator-name = "vdd-cpu";
+			};
+
+			reg_dcdc3: dcdc3 {
+				regulator-always-on;
+				regulator-min-microvolt = <940000>;
+				regulator-max-microvolt = <940000>;
+				regulator-name = "vdd-sys";
+			};
+
+			reg_dcdc4: dcdc4 {
+				regulator-min-microvolt = <810000>;
+				regulator-max-microvolt = <990000>;
+				regulator-name = "vdd-gpu";
+			};
+
+			reg_dcdc5: dcdc5 {
+				regulator-always-on;
+				regulator-min-microvolt = <1100000>;
+				regulator-max-microvolt = <1100000>;
+				regulator-name = "vdd-dram";
+			};
+
+			reg_dcdc6: dcdc6 {
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
+				regulator-name = "vcc3v3-pi";
+			};
+
+			rtc-ldo {
+				/* RTC_LDO is a fixed, always-on regulator */
+				regulator-always-on;
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <1800000>;
+				regulator-name = "rtc-ldo";
+			};
+
+			reg_sw: sw {
+				regulator-name = "vcc-lcd-pd";
+			};
+		};
+	};
+};
+
+&uart0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0_ph_pins>;
+	status = "okay";
+};
+
+&usbphy {
+	status = "okay";
+	usb1_vbus-supply = <&reg_vcc5v>;
+	usb3_vbus-supply = <&reg_vcc5v>;
+};
