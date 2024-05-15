@@ -15,6 +15,13 @@ void mctl_auto_detect_rank_width(const struct dram_para *para,
 	/* this is minimum size that it's supported */
 	config->cols = 8;
 	config->rows = 13;
+	if (para->type == SUNXI_DRAM_TYPE_DDR4) {
+		config->banks = 2;
+		config->bank_groups = 1;
+	} else {
+		config->banks = 3;
+		config->bank_groups = 0;
+	}
 
 	/*
 	 * Strategy here is to test most demanding combination first and least
@@ -90,9 +97,11 @@ void mctl_auto_detect_dram_size(const struct dram_para *para,
 	unsigned int shift, cols, rows;
 	u32 buffer[16];
 
-	/* max. config for columns, but not rows */
+	/* max. config for columns, banks and bank groups, but not rows */
 	config->cols = 11;
 	config->rows = 13;
+	config->banks = 3;
+	config->bank_groups = para->type == SUNXI_DRAM_TYPE_DDR4 ? 2 : 0;
 	mctl_core_init(para, config);
 
 	/*
@@ -113,6 +122,22 @@ void mctl_auto_detect_dram_size(const struct dram_para *para,
 	}
 	debug("detected %u columns\n", cols);
 
+	if (para->type == SUNXI_DRAM_TYPE_DDR4) {
+		/* detect number of bank groups */
+		for (config->bank_groups = 1; config->bank_groups < 4; config->bank_groups++) {
+			if (mctl_mem_matches(1ULL << (config->bank_groups + 5)))
+				break;
+		}
+		if (config->bank_groups == 3)
+			config->bank_groups = 0;
+		debug("detected %u bank groups\n", config->bank_groups);
+
+		/* detect number of banks */
+		if (mctl_mem_matches(1ULL << (shift + 13)))
+			config->banks = 2;
+		debug("detected %u banks\n", config->banks);
+	}
+
 	/* restore data */
 	memcpy((u32 *)CFG_SYS_SDRAM_BASE, buffer, sizeof(buffer));
 
@@ -127,7 +152,8 @@ void mctl_auto_detect_dram_size(const struct dram_para *para,
 	mctl_write_pattern();
 
 	/* detect row address bits */
-	shift = config->bus_full_width + 4 + config->cols;
+	shift = config->bus_full_width + 1 + config->bank_groups +
+		config->cols + config->banks;
 	for (rows = 13; rows < 17; rows++) {
 		if (mctl_check_pattern(1ULL << (rows + shift)))
 			break;
@@ -143,8 +169,12 @@ void mctl_auto_detect_dram_size(const struct dram_para *para,
 
 unsigned long mctl_calc_size(const struct dram_config *config)
 {
-	u8 width = config->bus_full_width ? 4 : 2;
+	unsigned int shift;
 
-	/* 8 banks */
-	return (1ULL << (config->cols + config->rows + 3)) * width * config->ranks;
+	shift = config->cols + config->rows +
+		config->banks + config->bank_groups +
+		config->bus_full_width + 1 +
+		config->ranks - 1;
+
+	return 1ULL << shift;
 }
