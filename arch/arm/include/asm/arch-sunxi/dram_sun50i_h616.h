@@ -166,6 +166,8 @@ struct dram_config {
 	u8 rows;
 	u8 ranks;
 	u8 bus_full_width;
+	u8 banks;
+	u8 bank_groups;
 };
 
 static inline int ns_to_t(int nanoseconds)
