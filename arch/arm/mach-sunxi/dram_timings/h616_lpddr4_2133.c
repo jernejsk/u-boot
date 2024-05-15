@@ -23,7 +23,7 @@ void mctl_set_timing_params(const struct dram_para *para)
 	u8 trcd		= max(ns_to_t(18), 2);
 	u8 trc		= ns_to_t(65);
 	u8 txp		= max(ns_to_t(8), 2);
-	u8 trtp		= max(ns_to_t(8), 4);
+	u8 trtp		= 4;
 	u8 trp		= ns_to_t(21);
 	u8 tras		= ns_to_t(42);
 	u16 trefi	= ns_to_t(3904) / 32;
@@ -75,7 +75,7 @@ void mctl_set_timing_params(const struct dram_para *para)
 
 	clrsetbits_le32(&mctl_ctl->init[0], 0xC0000FFF, 0x3f0);
 	writel(0x01f20000, &mctl_ctl->init[1]);
-	writel(0x00000d05, &mctl_ctl->init[2]);
+	clrsetbits_le32(&mctl_ctl->init[2], 0xFF0F, 0xd05);
 	writel(0, &mctl_ctl->dfimisc);
 	writel(0x0034001b, &mctl_ctl->init[3]);
 	writel(0x00330000, &mctl_ctl->init[4]);

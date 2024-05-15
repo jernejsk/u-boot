@@ -24,8 +24,8 @@ void mctl_set_timing_params(const struct dram_para *para)
 	u8 trrd		= max(ns_to_t(6), 4);	/* JEDEC: max(6 ns, 4nCK) */
 	u8 trcd		= ns_to_t(15);		/* JEDEC: 13.5 ns */
 	u8 trc		= ns_to_t(53);		/* JEDEC: 49.5 ns */
-	u8 txp		= max(ns_to_t(6), 3);	/* JEDEC: max(6 ns, 3nCK) */
 	u8 trtp		= max(ns_to_t(8), 2);	/* JEDEC: max(7.5 ns, 4nCK) */
+	u8 txp		= trtp;			/* JEDEC: max(6 ns, 3nCK) */
 	u8 trp		= ns_to_t(15);		/* JEDEC: >= 13.75 ns */
 	u8 tras		= ns_to_t(38);		/* JEDEC >= 36 ns, <= 9*trefi */
 	u16 trefi	= ns_to_t(7800) / 32;	/* JEDEC: 7.8us@Tcase <= 85C */
@@ -64,6 +64,9 @@ void mctl_set_timing_params(const struct dram_para *para)
 	twr2rd = trtp + 2 + tcwl;
 	trd2wr = tcl + 3 - tcwl;
 
+	if (trtp + trp <= tcl + 1)
+		trtp = tcl + 2 - trp;
+
 	/* set DRAM timing */
 	writel((twtp << 24) | (tfaw << 16) | (trasmax << 8) | tras,
 	       &mctl_ctl->dramtmg[0]);
@@ -88,7 +91,7 @@ void mctl_set_timing_params(const struct dram_para *para)
 
 	clrbits_le32(&mctl_ctl->init[0], 3 << 30);
 	writel(0x420000, &mctl_ctl->init[1]);
-	writel(5, &mctl_ctl->init[2]);
+	clrsetbits_le32(&mctl_ctl->init[2], 0xFF0F, 0xd05);
 	writel(0x1f140004, &mctl_ctl->init[3]);
 	writel(0x00200000, &mctl_ctl->init[4]);
 
