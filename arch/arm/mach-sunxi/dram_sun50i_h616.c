@@ -1293,7 +1293,7 @@ static bool mctl_ctrl_init(const struct dram_para *para,
 		reg_val |= MSTR_BURST_LENGTH(16) | MSTR_DEVICETYPE_LPDDR4;
 		break;
 	case SUNXI_DRAM_TYPE_DDR4:
-		reg_val |= MSTR_BURST_LENGTH(8) | MSTR_DEVICETYPE_DDR4;
+		reg_val |= MSTR_BURST_LENGTH(8) | MSTR_DEVICETYPE_DDR4 | MSTR_2TMODE;
 		break;
 	default:
 		panic("This DRAM setup is currently not supported.\n");
