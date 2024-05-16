@@ -971,7 +971,7 @@ static bool mctl_phy_init(const struct dram_para *para,
 		break;
 	case SUNXI_DRAM_TYPE_DDR4:
 		val = 13;
-		val2 = 9;
+		val2 = 10;
 		break;
 	default:
 		panic("This DRAM setup is currently not supported.\n");
