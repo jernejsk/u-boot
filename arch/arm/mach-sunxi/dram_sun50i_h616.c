@@ -167,7 +167,7 @@ static void mctl_set_addrmap(const struct dram_para *para,
 		mctl_ctl->addrmap[1] = (cols - 2) | (cols - 2) << 8 | (cols - 2) << 16;
 
 	/* Columns */
-	mctl_ctl->addrmap[2] = 0;
+	mctl_ctl->addrmap[2] = (offs << 8) | (offs << 16) | (offs << 24);
 	switch (cols) {
 	case 7:
 		mctl_ctl->addrmap[3] = offs | 0x1F1F1F00;
