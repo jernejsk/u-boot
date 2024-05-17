@@ -139,10 +139,12 @@ static void mctl_sys_init(u32 clk_rate)
 	writel(0x8000, &mctl_ctl->clken);
 }
 
-static void mctl_set_addrmap(const struct dram_config *config)
+static void mctl_set_addrmap(const struct dram_para *para,
+			     const struct dram_config *config)
 {
 	struct sunxi_mctl_ctl_reg * const mctl_ctl =
 			(struct sunxi_mctl_ctl_reg *)SUNXI_DRAM_CTL0_BASE;
+	u32 offs = (para->type == SUNXI_DRAM_TYPE_DDR4) ? 1 : 0;
 	u8 cols = config->cols;
 	u8 rows = config->rows;
 	u8 ranks = config->ranks;
@@ -157,34 +159,37 @@ static void mctl_set_addrmap(const struct dram_config *config)
 		mctl_ctl->addrmap[0] = 0x1F;
 
 	/* Banks, hardcoded to 8 banks now */
-	mctl_ctl->addrmap[1] = (cols - 2) | (cols - 2) << 8 | (cols - 2) << 16;
+	if (para->type == SUNXI_DRAM_TYPE_DDR4)
+		mctl_ctl->addrmap[1] = (cols - 1) | (cols - 1) << 8 | 0x3f0000;
+	else
+		mctl_ctl->addrmap[1] = (cols - 2) | (cols - 2) << 8 | (cols - 2) << 16;
 
 	/* Columns */
 	mctl_ctl->addrmap[2] = 0;
 	switch (cols) {
 	case 7:
-		mctl_ctl->addrmap[3] = 0x1F1F1F00;
+		mctl_ctl->addrmap[3] = offs | 0x1F1F1F00;
 		mctl_ctl->addrmap[4] = 0x1F1F;
 		break;
 	case 8:
-		mctl_ctl->addrmap[3] = 0x1F1F0000;
+		mctl_ctl->addrmap[3] = offs | (offs << 8) | 0x1F1F0000;
 		mctl_ctl->addrmap[4] = 0x1F1F;
 		break;
 	case 9:
-		mctl_ctl->addrmap[3] = 0x1F000000;
+		mctl_ctl->addrmap[3] = offs | (offs << 8) | (offs << 16) | 0x1F000000;
 		mctl_ctl->addrmap[4] = 0x1F1F;
 		break;
 	case 10:
-		mctl_ctl->addrmap[3] = 0;
+		mctl_ctl->addrmap[3] = offs | (offs << 8) | (offs << 16) | (offs << 24);
 		mctl_ctl->addrmap[4] = 0x1F1F;
 		break;
 	case 11:
-		mctl_ctl->addrmap[3] = 0;
-		mctl_ctl->addrmap[4] = 0x1F00;
+		mctl_ctl->addrmap[3] = offs | (offs << 8) | (offs << 16) | (offs << 24);
+		mctl_ctl->addrmap[4] = offs | 0x1F00;
 		break;
 	case 12:
-		mctl_ctl->addrmap[3] = 0;
-		mctl_ctl->addrmap[4] = 0;
+		mctl_ctl->addrmap[3] = offs | (offs << 8) | (offs << 16) | (offs << 24);
+		mctl_ctl->addrmap[4] = offs | (offs << 8);
 		break;
 	default:
 		panic("Unsupported DRAM configuration: column number invalid\n");
@@ -222,7 +227,7 @@ static void mctl_set_addrmap(const struct dram_config *config)
 	}
 
 	/* Bank groups, DDR4 only */
-	mctl_ctl->addrmap[8] = 0x3F3F;
+	mctl_ctl->addrmap[8] = 0x3F01;
 }
 
 static const u8 phy_addr_maps[2][27] = {
@@ -1142,6 +1147,18 @@ static bool mctl_phy_init(const struct dram_para *para,
 		writel(0x80005030, &mctl_ctl->mrctrl0);
 		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
 
+		writel(0x862 | 0x80, &mctl_ctl->mrctrl1);
+		writel(0x80006030, &mctl_ctl->mrctrl0);
+		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
+
+		udelay(10);
+
+		writel(0x862 | 0x80, &mctl_ctl->mrctrl1);
+		writel(0x80006030, &mctl_ctl->mrctrl0);
+		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
+
+		udelay(10);
+
 		writel(0x862, &mctl_ctl->mrctrl1);
 		writel(0x80006030, &mctl_ctl->mrctrl0);
 		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
@@ -1328,7 +1345,7 @@ static bool mctl_ctrl_init(const struct dram_para *para,
 
 	writel(BIT(31), &mctl_com->cr);
 
-	mctl_set_addrmap(config);
+	mctl_set_addrmap(para, config);
 
 	mctl_set_timing_params(para);
 
