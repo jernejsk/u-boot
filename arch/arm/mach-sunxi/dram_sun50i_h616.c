@@ -12,6 +12,7 @@
  * (C) Copyright 2020 Jernej Skrabec <jernej.skrabec@siol.net>
  *
  */
+#define DEBUG 1
 #include <common.h>
 #include <init.h>
 #include <log.h>
@@ -141,95 +142,112 @@ static void mctl_sys_init(u32 clk_rate)
 	writel(0x8000, &mctl_ctl->clken);
 }
 
-static void mctl_set_addrmap(const struct dram_para *para,
-			     const struct dram_config *config)
+static void mctl_set_addrmap(const struct dram_config *config)
 {
 	struct sunxi_mctl_ctl_reg * const mctl_ctl =
 			(struct sunxi_mctl_ctl_reg *)SUNXI_DRAM_CTL0_BASE;
-	u32 offs = (para->type == SUNXI_DRAM_TYPE_DDR4) ? 1 : 0;
 	u8 cols = config->cols;
 	u8 rows = config->rows;
 	u8 ranks = config->ranks;
+	u8 banks = config->banks;
+	u8 groups = config->bank_groups;
+	u8 val;
+
+	/*
+	 * Address bits are ordered in this way, from LSB to MSB:
+	 * - bank groups
+	 * - columns
+	 * - banks
+	 * - rows
+	 * - rank
+	 */
 
 	if (!config->bus_full_width)
 		cols -= 1;
 
 	/* Ranks */
 	if (ranks == 2)
-		mctl_ctl->addrmap[0] = rows + cols - 3;
+		mctl_ctl->addrmap[0] = groups + banks + cols + rows - 6;
 	else
 		mctl_ctl->addrmap[0] = 0x1F;
 
 	/* Banks, hardcoded to 8 banks now */
-	if (para->type == SUNXI_DRAM_TYPE_DDR4)
-		mctl_ctl->addrmap[1] = (cols - 1) | (cols - 1) << 8 | 0x3f0000;
+	val = groups + cols - 2;
+	if (banks == 3)
+		mctl_ctl->addrmap[1] = val | (val << 8) | (val << 16);
 	else
-		mctl_ctl->addrmap[1] = (cols - 2) | (cols - 2) << 8 | (cols - 2) << 16;
+		mctl_ctl->addrmap[1] = val | (val << 8) | 0x3f0000;
 
 	/* Columns */
-	mctl_ctl->addrmap[2] = (offs << 8) | (offs << 16) | (offs << 24);
+	mctl_ctl->addrmap[2] = (groups << 8) | (groups << 16) | (groups << 24);
 	switch (cols) {
 	case 7:
-		mctl_ctl->addrmap[3] = offs | 0x1F1F1F00;
+		mctl_ctl->addrmap[3] = groups | 0x1F1F1F00;
 		mctl_ctl->addrmap[4] = 0x1F1F;
 		break;
 	case 8:
-		mctl_ctl->addrmap[3] = offs | (offs << 8) | 0x1F1F0000;
+		mctl_ctl->addrmap[3] = groups | (groups << 8) | 0x1F1F0000;
 		mctl_ctl->addrmap[4] = 0x1F1F;
 		break;
 	case 9:
-		mctl_ctl->addrmap[3] = offs | (offs << 8) | (offs << 16) | 0x1F000000;
+		mctl_ctl->addrmap[3] = groups | (groups << 8) | (groups << 16) | 0x1F000000;
 		mctl_ctl->addrmap[4] = 0x1F1F;
 		break;
 	case 10:
-		mctl_ctl->addrmap[3] = offs | (offs << 8) | (offs << 16) | (offs << 24);
+		mctl_ctl->addrmap[3] = groups | (groups << 8) | (groups << 16) | (groups << 24);
 		mctl_ctl->addrmap[4] = 0x1F1F;
 		break;
 	case 11:
-		mctl_ctl->addrmap[3] = offs | (offs << 8) | (offs << 16) | (offs << 24);
-		mctl_ctl->addrmap[4] = offs | 0x1F00;
+		mctl_ctl->addrmap[3] = groups | (groups << 8) | (groups << 16) | (groups << 24);
+		mctl_ctl->addrmap[4] = groups | 0x1F00;
 		break;
 	case 12:
-		mctl_ctl->addrmap[3] = offs | (offs << 8) | (offs << 16) | (offs << 24);
-		mctl_ctl->addrmap[4] = offs | (offs << 8);
+		mctl_ctl->addrmap[3] = groups | (groups << 8) | (groups << 16) | (groups << 24);
+		mctl_ctl->addrmap[4] = groups | (groups << 8);
 		break;
 	default:
 		panic("Unsupported DRAM configuration: column number invalid\n");
 	}
 
 	/* Rows */
-	mctl_ctl->addrmap[5] = (cols - 3) | ((cols - 3) << 8) | ((cols - 3) << 16) | ((cols - 3) << 24);
+	val = groups + banks + cols - 6;
+	mctl_ctl->addrmap[5] = val | (val << 8) | (val << 16) | (val << 24);
 	switch (rows) {
 	case 13:
-		mctl_ctl->addrmap[6] = (cols - 3) | 0x0F0F0F00;
+		mctl_ctl->addrmap[6] = val | 0x0F0F0F00;
 		mctl_ctl->addrmap[7] = 0x0F0F;
 		break;
 	case 14:
-		mctl_ctl->addrmap[6] = (cols - 3) | ((cols - 3) << 8) | 0x0F0F0000;
+		mctl_ctl->addrmap[6] = val | (val << 8) | 0x0F0F0000;
 		mctl_ctl->addrmap[7] = 0x0F0F;
 		break;
 	case 15:
-		mctl_ctl->addrmap[6] = (cols - 3) | ((cols - 3) << 8) | ((cols - 3) << 16) | 0x0F000000;
+		mctl_ctl->addrmap[6] = val | (val << 8) | (val << 16) | 0x0F000000;
 		mctl_ctl->addrmap[7] = 0x0F0F;
 		break;
 	case 16:
-		mctl_ctl->addrmap[6] = (cols - 3) | ((cols - 3) << 8) | ((cols - 3) << 16) | ((cols - 3) << 24);
+		mctl_ctl->addrmap[6] = val | (val << 8) | (val << 16) | (val << 24);
 		mctl_ctl->addrmap[7] = 0x0F0F;
 		break;
 	case 17:
-		mctl_ctl->addrmap[6] = (cols - 3) | ((cols - 3) << 8) | ((cols - 3) << 16) | ((cols - 3) << 24);
-		mctl_ctl->addrmap[7] = (cols - 3) | 0x0F00;
+		mctl_ctl->addrmap[6] = val | (val << 8) | (val << 16) | (val << 24);
+		mctl_ctl->addrmap[7] = val | 0x0F00;
 		break;
 	case 18:
-		mctl_ctl->addrmap[6] = (cols - 3) | ((cols - 3) << 8) | ((cols - 3) << 16) | ((cols - 3) << 24);
-		mctl_ctl->addrmap[7] = (cols - 3) | ((cols - 3) << 8);
+		mctl_ctl->addrmap[6] = val | (val << 8) | (val << 16) | (val << 24);
+		mctl_ctl->addrmap[7] = val | (val << 8);
 		break;
 	default:
 		panic("Unsupported DRAM configuration: row number invalid\n");
 	}
 
 	/* Bank groups, DDR4 only */
-	mctl_ctl->addrmap[8] = 0x3F01;
+	if (groups == 2)
+		mctl_ctl->addrmap[8] = 0x101;
+	else if (groups == 1)
+		mctl_ctl->addrmap[8] = 0x3f01;
+	else
+		mctl_ctl->addrmap[8] = 0x3f3f;
 }
 
 static const u8 phy_addr_maps[2][27] = {
@@ -1347,7 +1365,7 @@ static bool mctl_ctrl_init(const struct dram_para *para,
 
 	writel(BIT(31), &mctl_com->cr);
 
-	mctl_set_addrmap(para, config);
+	mctl_set_addrmap(config);
 
 	mctl_set_timing_params(para);
 
@@ -1410,6 +1428,13 @@ static void mctl_auto_detect_rank_width(const struct dram_para *para,
 	/* this is minimum size that it's supported */
 	config->cols = 8;
 	config->rows = 13;
+	if (para->type == SUNXI_DRAM_TYPE_DDR4) {
+		config->banks = 2;
+		config->bank_groups = 1;
+	} else {
+		config->banks = 3;
+		config->bank_groups = 0;
+	}
 
 	/*
 	 * Strategy here is to test most demanding combination first and least
@@ -1449,36 +1474,64 @@ static void mctl_auto_detect_rank_width(const struct dram_para *para,
 static void mctl_auto_detect_dram_size(const struct dram_para *para,
 				       struct dram_config *config)
 {
-	/* detect row address bits */
-	config->cols = 8;
+	unsigned int shift;
+
+	/* max. config for columns, banks and bank groups, but not rows */
+	config->cols = 11;
+	config->rows = 13;
+	config->banks = 3;
+	config->bank_groups = para->type == SUNXI_DRAM_TYPE_DDR4 ? 2 : 0;
+	mctl_core_init(para, config);
+
+	shift = config->bus_full_width + 1 + config->bank_groups;
+
+	/* detect column address bits */
+	for (config->cols = 8; config->cols < 11; config->cols++) {
+		if (mctl_mem_matches(1 << (config->cols + shift)))
+			break;
+	}
+	debug("detected %u columns\n", config->cols);
+
+	if (para->type == SUNXI_DRAM_TYPE_DDR4) {
+		/* detect number of bank groups */
+		for (config->bank_groups = 1; config->bank_groups < 4; config->bank_groups++) {
+			if (mctl_mem_matches(1 << (config->bank_groups + 5)))
+				break;
+		}
+		if (config->bank_groups == 3)
+			config->bank_groups = 0;
+		debug("detected %u bank groups\n", config->bank_groups);
+
+		/* detect number of banks */
+		if (mctl_mem_matches(1 << (shift + 13)))
+			config->banks = 2;
+		debug("detected %u banks\n", config->banks);
+	}
+
+	/* reconfigure to make sure that all active rows are accessible */
 	config->rows = 18;
 	mctl_core_init(para, config);
 
+	/* detect row address bits */
+	shift = config->bus_full_width + 1 + config->bank_groups +
+		config->cols + config->banks;
 	for (config->rows = 13; config->rows < 18; config->rows++) {
-		/* 8 banks, 8 bit per byte and 16/32 bit width */
-		if (mctl_mem_matches((1 << (config->rows + config->cols +
-					    4 + config->bus_full_width))))
+		if (mctl_mem_matches(1 << (config->rows + shift)))
 			break;
 	}
-
-	/* detect column address bits */
-	config->cols = 11;
-	mctl_core_init(para, config);
-
-	for (config->cols = 8; config->cols < 11; config->cols++) {
-		/* 8 bits per byte and 16/32 bit width */
-		if (mctl_mem_matches(1 << (config->cols + 1 +
-					   config->bus_full_width)))
-			break;
-	}
+	debug("detected %u rows\n", config->rows);
 }
 
 static unsigned long mctl_calc_size(const struct dram_config *config)
 {
-	u8 width = config->bus_full_width ? 4 : 2;
+	unsigned int shift;
 
-	/* 8 banks */
-	return (1ULL << (config->cols + config->rows + 3)) * width * config->ranks;
+	shift = config->cols + config->rows +
+		config->banks + config->bank_groups +
+		config->bus_full_width + 1 +
+		config->ranks - 1;
+
+	return 1ULL << shift;
 }
 
 static const struct dram_para para = {
