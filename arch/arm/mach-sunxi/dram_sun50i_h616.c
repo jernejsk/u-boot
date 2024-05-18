@@ -58,8 +58,8 @@ static void mbus_configure_port(u8 port,
 	writel_relaxed(cfg1, &mctl_com->master[port].cfg1);
 }
 
-#define MBUS_CONF(port, bwlimit, qos, acs, bwl0, bwl1, bwl2)	\
-	mbus_configure_port(port, bwlimit, false, \
+#define MBUS_CONF(port, bwlimit, priority, qos, acs, bwl0, bwl1, bwl2)	\
+	mbus_configure_port(port, bwlimit, priority, \
 			    MBUS_QOS_ ## qos, 0, acs, bwl0, bwl1, bwl2)
 
 static void mctl_set_master_priority(void)
@@ -71,24 +71,25 @@ static void mctl_set_master_priority(void)
 	writel(399, &mctl_com->tmr);
 	writel(BIT(16), &mctl_com->bwcr);
 
-	MBUS_CONF( 0, true, HIGHEST, 0,  256,  128,  100);
-	MBUS_CONF( 1, true,    HIGH, 0, 1536, 1400,  256);
-	MBUS_CONF( 2, true, HIGHEST, 0,  512,  256,   96);
-	MBUS_CONF( 3, true,    HIGH, 0,  256,  100,   80);
-	MBUS_CONF( 4, true,    HIGH, 2, 8192, 5500, 5000);
-	MBUS_CONF( 5, true,    HIGH, 2,  100,   64,   32);
-	MBUS_CONF( 6, true,    HIGH, 2,  100,   64,   32);
-	MBUS_CONF( 8, true,    HIGH, 0,  256,  128,   64);
-	MBUS_CONF(11, true,    HIGH, 0,  256,  128,  100);
-	MBUS_CONF(14, true,    HIGH, 0, 1024,  256,   64);
-	MBUS_CONF(16, true, HIGHEST, 6, 8192, 2800, 2400);
-	MBUS_CONF(21, true, HIGHEST, 6, 2048,  768,  512);
-	MBUS_CONF(25, true, HIGHEST, 0,  100,   64,   32);
-	MBUS_CONF(26, true,    HIGH, 2, 8192, 5500, 5000);
-	MBUS_CONF(37, true,    HIGH, 0,  256,  128,   64);
-	MBUS_CONF(38, true,    HIGH, 2,  100,   64,   32);
-	MBUS_CONF(39, true,    HIGH, 2, 8192, 5500, 5000);
-	MBUS_CONF(40, true,    HIGH, 2,  100,   64,   32);
+	MBUS_CONF( 0, false, true, HIGHEST, 0,  256,  128,  100);
+	MBUS_CONF( 1, false, true,    HIGH, 0, 1536, 1400,  256);
+	MBUS_CONF( 2, false, true, HIGHEST, 0,  512,  256,   96);
+	MBUS_CONF( 3, false, true,    HIGH, 0,  256,  100,   80);
+	MBUS_CONF( 4, false, true,    HIGH, 2, 8192, 5500, 5000);
+	MBUS_CONF( 5, false, true,    HIGH, 2,  100,   64,   32);
+	MBUS_CONF( 6, false, true,    HIGH, 2,  100,   64,   32);
+	MBUS_CONF( 8, false, true,    HIGH, 0,  256,  128,   64);
+	MBUS_CONF(11, false, true,    HIGH, 0,  256,  128,  100);
+	MBUS_CONF(14, false, true,    HIGH, 0, 1024,  256,   64);
+	MBUS_CONF(16, false, true, HIGHEST, 6, 8192, 2800, 2400);
+	MBUS_CONF(21, false, true, HIGHEST, 6, 2048,  768,  512);
+	MBUS_CONF(22, false, true,    HIGH, 0,  256,  128,  100);
+	MBUS_CONF(25,  true, true, HIGHEST, 0,  100,   64,   32);
+	MBUS_CONF(26, false, true,    HIGH, 2, 8192, 5500, 5000);
+	MBUS_CONF(37, false, true,    HIGH, 0,  256,  128,   64);
+	MBUS_CONF(38, false, true,    HIGH, 2,  100,   64,   32);
+	MBUS_CONF(39, false, true,    HIGH, 2, 8192, 5500, 5000);
+	MBUS_CONF(40, false, true,    HIGH, 2,  100,   64,   32);
 
 	dmb();
 }
@@ -1376,10 +1377,6 @@ static bool mctl_ctrl_init(const struct dram_para *para,
 	setbits_le32(&mctl_ctl->unk_0x2180, BIT(31) | BIT(30));
 	setbits_le32(&mctl_ctl->unk_0x3180, BIT(31) | BIT(30));
 	setbits_le32(&mctl_ctl->unk_0x4180, BIT(31) | BIT(30));
-
-	if (para->type == SUNXI_DRAM_TYPE_LPDDR4 ||
-	    para->type == SUNXI_DRAM_TYPE_DDR4)
-		setbits_le32(&mctl_ctl->dbictl, BIT(2));
 
 	setbits_le32(&mctl_ctl->rfshctl3, BIT(0));
 	clrbits_le32(&mctl_ctl->dfimisc, BIT(0));
