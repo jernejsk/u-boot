@@ -1484,7 +1484,7 @@ static void mctl_auto_detect_dram_size(const struct dram_para *para,
 
 	/* detect column address bits */
 	for (config->cols = 8; config->cols < 11; config->cols++) {
-		if (mctl_mem_matches(1 << (config->cols + shift)))
+		if (mctl_mem_matches(1ULL << (config->cols + shift)))
 			break;
 	}
 	debug("detected %u columns\n", config->cols);
@@ -1492,7 +1492,7 @@ static void mctl_auto_detect_dram_size(const struct dram_para *para,
 	if (para->type == SUNXI_DRAM_TYPE_DDR4) {
 		/* detect number of bank groups */
 		for (config->bank_groups = 1; config->bank_groups < 4; config->bank_groups++) {
-			if (mctl_mem_matches(1 << (config->bank_groups + 5)))
+			if (mctl_mem_matches(1ULL << (config->bank_groups + 5)))
 				break;
 		}
 		if (config->bank_groups == 3)
@@ -1500,7 +1500,7 @@ static void mctl_auto_detect_dram_size(const struct dram_para *para,
 		debug("detected %u bank groups\n", config->bank_groups);
 
 		/* detect number of banks */
-		if (mctl_mem_matches(1 << (shift + 13)))
+		if (mctl_mem_matches(1ULL << (shift + 13)))
 			config->banks = 2;
 		debug("detected %u banks\n", config->banks);
 	}
@@ -1513,7 +1513,7 @@ static void mctl_auto_detect_dram_size(const struct dram_para *para,
 	shift = config->bus_full_width + 1 + config->bank_groups +
 		config->cols + config->banks;
 	for (config->rows = 13; config->rows < 18; config->rows++) {
-		if (mctl_mem_matches(1 << (config->rows + shift)))
+		if (mctl_mem_matches(1ULL << (config->rows + shift)))
 			break;
 	}
 	debug("detected %u rows\n", config->rows);
