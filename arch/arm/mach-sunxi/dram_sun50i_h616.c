@@ -6,8 +6,7 @@
  * unknown. That's why this driver has plenty of magic numbers. Some
  * meaning was nevertheless deduced from strings found in boot0 and
  * known meaning of some dram parameters.
- * This driver supports DDR3, LPDDR3 and LPDDR4 memory. There is no
- * DDR4 support yet.
+ * This driver supports DDR3, DDR4, LPDDR3 and LPDDR4 memory.
  *
  * (C) Copyright 2020 Jernej Skrabec <jernej.skrabec@siol.net>
  *
@@ -147,83 +146,105 @@ static void mctl_set_addrmap(const struct dram_config *config)
 	u8 cols = config->cols;
 	u8 rows = config->rows;
 	u8 ranks = config->ranks;
+	u8 banks = config->banks;
+	u8 groups = config->bank_groups;
+	u8 val;
+
+	/*
+	 * Address bits are ordered in this way, from LSB to MSB:
+	 * - bank groups
+	 * - columns
+	 * - banks
+	 * - rows
+	 * - rank
+	 */
 
 	if (!config->bus_full_width)
 		cols -= 1;
 
 	/* Ranks */
 	if (ranks == 2)
-		mctl_ctl->addrmap[0] = rows + cols - 3;
+		mctl_ctl->addrmap[0] = groups + banks + cols + rows - 6;
 	else
 		mctl_ctl->addrmap[0] = 0x1F;
 
 	/* Banks, hardcoded to 8 banks now */
-	mctl_ctl->addrmap[1] = (cols - 2) | (cols - 2) << 8 | (cols - 2) << 16;
+	val = groups + cols - 2;
+	if (banks == 3)
+		mctl_ctl->addrmap[1] = val | (val << 8) | (val << 16);
+	else
+		mctl_ctl->addrmap[1] = val | (val << 8) | 0x3f0000;
 
 	/* Columns */
-	mctl_ctl->addrmap[2] = 0;
+	mctl_ctl->addrmap[2] = (groups << 8) | (groups << 16) | (groups << 24);
 	switch (cols) {
 	case 7:
-		mctl_ctl->addrmap[3] = 0x1F1F1F00;
+		mctl_ctl->addrmap[3] = groups | 0x1F1F1F00;
 		mctl_ctl->addrmap[4] = 0x1F1F;
 		break;
 	case 8:
-		mctl_ctl->addrmap[3] = 0x1F1F0000;
+		mctl_ctl->addrmap[3] = groups | (groups << 8) | 0x1F1F0000;
 		mctl_ctl->addrmap[4] = 0x1F1F;
 		break;
 	case 9:
-		mctl_ctl->addrmap[3] = 0x1F000000;
+		mctl_ctl->addrmap[3] = groups | (groups << 8) | (groups << 16) | 0x1F000000;
 		mctl_ctl->addrmap[4] = 0x1F1F;
 		break;
 	case 10:
-		mctl_ctl->addrmap[3] = 0;
+		mctl_ctl->addrmap[3] = groups | (groups << 8) | (groups << 16) | (groups << 24);
 		mctl_ctl->addrmap[4] = 0x1F1F;
 		break;
 	case 11:
-		mctl_ctl->addrmap[3] = 0;
-		mctl_ctl->addrmap[4] = 0x1F00;
+		mctl_ctl->addrmap[3] = groups | (groups << 8) | (groups << 16) | (groups << 24);
+		mctl_ctl->addrmap[4] = groups | 0x1F00;
 		break;
 	case 12:
-		mctl_ctl->addrmap[3] = 0;
-		mctl_ctl->addrmap[4] = 0;
+		mctl_ctl->addrmap[3] = groups | (groups << 8) | (groups << 16) | (groups << 24);
+		mctl_ctl->addrmap[4] = groups | (groups << 8);
 		break;
 	default:
 		panic("Unsupported DRAM configuration: column number invalid\n");
 	}
 
 	/* Rows */
-	mctl_ctl->addrmap[5] = (cols - 3) | ((cols - 3) << 8) | ((cols - 3) << 16) | ((cols - 3) << 24);
+	val = groups + banks + cols - 6;
+	mctl_ctl->addrmap[5] = val | (val << 8) | (val << 16) | (val << 24);
 	switch (rows) {
 	case 13:
-		mctl_ctl->addrmap[6] = (cols - 3) | 0x0F0F0F00;
+		mctl_ctl->addrmap[6] = val | 0x0F0F0F00;
 		mctl_ctl->addrmap[7] = 0x0F0F;
 		break;
 	case 14:
-		mctl_ctl->addrmap[6] = (cols - 3) | ((cols - 3) << 8) | 0x0F0F0000;
+		mctl_ctl->addrmap[6] = val | (val << 8) | 0x0F0F0000;
 		mctl_ctl->addrmap[7] = 0x0F0F;
 		break;
 	case 15:
-		mctl_ctl->addrmap[6] = (cols - 3) | ((cols - 3) << 8) | ((cols - 3) << 16) | 0x0F000000;
+		mctl_ctl->addrmap[6] = val | (val << 8) | (val << 16) | 0x0F000000;
 		mctl_ctl->addrmap[7] = 0x0F0F;
 		break;
 	case 16:
-		mctl_ctl->addrmap[6] = (cols - 3) | ((cols - 3) << 8) | ((cols - 3) << 16) | ((cols - 3) << 24);
+		mctl_ctl->addrmap[6] = val | (val << 8) | (val << 16) | (val << 24);
 		mctl_ctl->addrmap[7] = 0x0F0F;
 		break;
 	case 17:
-		mctl_ctl->addrmap[6] = (cols - 3) | ((cols - 3) << 8) | ((cols - 3) << 16) | ((cols - 3) << 24);
-		mctl_ctl->addrmap[7] = (cols - 3) | 0x0F00;
+		mctl_ctl->addrmap[6] = val | (val << 8) | (val << 16) | (val << 24);
+		mctl_ctl->addrmap[7] = val | 0x0F00;
 		break;
 	case 18:
-		mctl_ctl->addrmap[6] = (cols - 3) | ((cols - 3) << 8) | ((cols - 3) << 16) | ((cols - 3) << 24);
-		mctl_ctl->addrmap[7] = (cols - 3) | ((cols - 3) << 8);
+		mctl_ctl->addrmap[6] = val | (val << 8) | (val << 16) | (val << 24);
+		mctl_ctl->addrmap[7] = val | (val << 8);
 		break;
 	default:
 		panic("Unsupported DRAM configuration: row number invalid\n");
 	}
 
 	/* Bank groups, DDR4 only */
-	mctl_ctl->addrmap[8] = 0x3F3F;
+	if (groups == 2)
+		mctl_ctl->addrmap[8] = 0x101;
+	else if (groups == 1)
+		mctl_ctl->addrmap[8] = 0x3f01;
+	else
+		mctl_ctl->addrmap[8] = 0x3f3f;
 }
 
 static const u8 phy_addr_maps[2][27] = {
@@ -238,6 +259,18 @@ static const u8 phy_addr_maps[2][27] = {
 		0x14, 0x07, 0x04, 0x13, 0x0c, 0x00, 0x16, 0x1a,
 		0x0a, 0x11, 0x03, 0x10, 0x0e, 0x01, 0x0d, 0x19,
 		0x06, 0x09, 0x0f
+	}
+#elif defined(CONFIG_SUNXI_DRAM_H616_DDR4)
+	{
+		0x12, 0x02, 0x0d, 0x13, 0x07, 0x05, 0x06, 0x0e,
+		0x00, 0x17, 0x09, 0x16, 0x0a, 0x01, 0x08, 0x10,
+		0x0b, 0x11, 0x18, 0x0f, 0x03, 0x15, 0x0c, 0x04,
+		0x14, 0x19, 0x1a
+	}, {
+		0x00, 0x01, 0x03, 0x06, 0x04, 0x13, 0x16, 0x0c,
+		0x10, 0x09, 0x0a, 0x0b, 0x07, 0x0d, 0x0e, 0x0f,
+		0x18, 0x11, 0x12, 0x05, 0x14, 0x08, 0x02, 0x17,
+		0x15, 0x19, 0x1a
 	}
 #elif defined(CONFIG_SUNXI_DRAM_H616_LPDDR3)
 	{
@@ -273,10 +306,11 @@ static void mctl_phy_configure_odt(const struct dram_para *para)
 
 	/*
 	 * This part should be applicable to all memory types, but is
-	 * usually found in LPDDR4 bootloaders. Therefore, we will leave
-	 * only for this type of memory.
+	 * usually found in (LP)DDR4 bootloaders. Therefore, we will leave
+	 * only for these memory types.
 	 */
-	if (para->type == SUNXI_DRAM_TYPE_LPDDR4) {
+	if (para->type == SUNXI_DRAM_TYPE_DDR4 ||
+	    para->type == SUNXI_DRAM_TYPE_LPDDR4) {
 		clrsetbits_le32(SUNXI_DRAM_PHY0_BASE + 0x390, BIT(5), BIT(4));
 		clrsetbits_le32(SUNXI_DRAM_PHY0_BASE + 0x3d0, BIT(5), BIT(4));
 		clrsetbits_le32(SUNXI_DRAM_PHY0_BASE + 0x410, BIT(5), BIT(4));
@@ -301,7 +335,7 @@ static void mctl_phy_configure_odt(const struct dram_para *para)
 	writel_relaxed(MASK_BYTE(val_lo, 1), SUNXI_DRAM_PHY0_BASE + 0x348);
 	writel_relaxed(MASK_BYTE(val_hi, 1), SUNXI_DRAM_PHY0_BASE + 0x34c);
 
-	val_lo = (para->type == SUNXI_DRAM_TYPE_LPDDR3) ? 0 : para->dx_odt;
+	val_lo = (para->type == SUNXI_DRAM_TYPE_LPDDR3 || para->type == SUNXI_DRAM_TYPE_DDR4) ? 0 : para->dx_odt;
 	val_hi = (para->type == SUNXI_DRAM_TYPE_LPDDR4) ? 0 : para->dx_odt;
 	writel_relaxed(MASK_BYTE(val_lo, 0), SUNXI_DRAM_PHY0_BASE + 0x380);
 	writel_relaxed(MASK_BYTE(val_hi, 0), SUNXI_DRAM_PHY0_BASE + 0x384);
@@ -323,7 +357,11 @@ static bool mctl_phy_write_leveling(const struct dram_para *para,
 
 	clrsetbits_le32(SUNXI_DRAM_PHY0_BASE + 8, 0xc0, 0x80);
 
-	if (para->type == SUNXI_DRAM_TYPE_LPDDR4) {
+	if (para->type == SUNXI_DRAM_TYPE_DDR4) {
+		/* MR1 value or'ed with 0x4000 */
+		writel(0x01, SUNXI_DRAM_PHY0_BASE + 0xc);
+		writel(0x46, SUNXI_DRAM_PHY0_BASE + 0x10);
+	} else if (para->type == SUNXI_DRAM_TYPE_LPDDR4) {
 		/* MR2 value */
 		writel(0x1b, SUNXI_DRAM_PHY0_BASE + 0xc);
 		writel(0, SUNXI_DRAM_PHY0_BASE + 0x10);
@@ -378,12 +416,16 @@ static bool mctl_phy_write_leveling(const struct dram_para *para,
 	return result;
 }
 
-static bool mctl_phy_read_calibration(const struct dram_config *config)
+static bool mctl_phy_read_calibration(const struct dram_para *para,
+				      const struct dram_config *config)
 {
 	bool result = true;
 	u32 val, tmp;
 
 	clrsetbits_le32(SUNXI_DRAM_PHY0_BASE + 8, 0x30, 0x20);
+
+	if (para->type == SUNXI_DRAM_TYPE_DDR4)
+		setbits_le32(SUNXI_DRAM_PHY0_BASE + 0x54, 2);
 
 	setbits_le32(SUNXI_DRAM_PHY0_BASE + 8, 1);
 
@@ -873,6 +915,21 @@ static void mctl_phy_ca_bit_delay_compensation(const struct dram_para *para,
 			}
 		}
 		break;
+	case SUNXI_DRAM_TYPE_DDR4:
+		if (para->tpr2 & 1) {
+			writel(val, SUNXI_DRAM_PHY0_BASE + 0x7e4);
+			if (config->ranks == 2) {
+				val = (para->tpr10 >> 11) & 0x1e;
+				writel(val, SUNXI_DRAM_PHY0_BASE + 0x7f8);
+			}
+		} else {
+			writel(val, SUNXI_DRAM_PHY0_BASE + 0x7a4);
+			if (config->ranks == 2) {
+				val = (para->tpr10 >> 11) & 0x1e;
+				writel(val, SUNXI_DRAM_PHY0_BASE + 0x7f8);
+			}
+		}
+		break;
 	case SUNXI_DRAM_TYPE_LPDDR3:
 		if (para->tpr2 & 1) {
 			writel(val, SUNXI_DRAM_PHY0_BASE + 0x7a0);
@@ -895,7 +952,6 @@ static void mctl_phy_ca_bit_delay_compensation(const struct dram_para *para,
 			writel(val, SUNXI_DRAM_PHY0_BASE + 0x794);
 		};
 		break;
-	case SUNXI_DRAM_TYPE_DDR4:
 	default:
 		panic("This DRAM setup is currently not supported.\n");
 	};
@@ -931,6 +987,10 @@ static bool mctl_phy_init(const struct dram_para *para,
 			val2 = 9;
 		}
 		break;
+	case SUNXI_DRAM_TYPE_DDR4:
+		val = 13;
+		val2 = 10;
+		break;
 	case SUNXI_DRAM_TYPE_LPDDR3:
 		if (para->tpr2 & 0x100) {
 			val = 12;
@@ -944,7 +1004,6 @@ static bool mctl_phy_init(const struct dram_para *para,
 		val = 20;
 		val2 = 10;
 		break;
-	case SUNXI_DRAM_TYPE_DDR4:
 	default:
 		panic("This DRAM setup is currently not supported.\n");
 	};
@@ -982,6 +1041,9 @@ static bool mctl_phy_init(const struct dram_para *para,
 	case SUNXI_DRAM_TYPE_DDR3:
 		val = para->tpr6 & 0xff;
 		break;
+	case SUNXI_DRAM_TYPE_DDR4:
+		val = para->tpr6 >> 8 & 0xff;
+		break;
 	case SUNXI_DRAM_TYPE_LPDDR3:
 		val = para->tpr6 >> 16 & 0xff;
 		break;
@@ -990,7 +1052,6 @@ static bool mctl_phy_init(const struct dram_para *para,
 		if (!val)
 			val = 0x33;
 		break;
-	case SUNXI_DRAM_TYPE_DDR4:
 	default:
 		panic("This DRAM setup is currently not supported.\n");
 	};
@@ -1004,13 +1065,15 @@ static bool mctl_phy_init(const struct dram_para *para,
 	case SUNXI_DRAM_TYPE_DDR3:
 		val = 0x0a;
 		break;
+	case SUNXI_DRAM_TYPE_DDR4:
+		val = 0x0c;
+		break;
 	case SUNXI_DRAM_TYPE_LPDDR3:
 		val = 0x0b;
 		break;
 	case SUNXI_DRAM_TYPE_LPDDR4:
 		val = 0x0d;
 		break;
-	case SUNXI_DRAM_TYPE_DDR4:
 	default:
 		panic("This DRAM setup is currently not supported.\n");
 	};
@@ -1087,6 +1150,52 @@ static bool mctl_phy_init(const struct dram_para *para,
 		writel(0x80003030, &mctl_ctl->mrctrl0);
 		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
 		break;
+	case SUNXI_DRAM_TYPE_DDR4:
+		writel(0x520, &mctl_ctl->mrctrl1);
+		writel(0x80000030, &mctl_ctl->mrctrl0);
+		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
+
+		writel(0x601, &mctl_ctl->mrctrl1);
+		writel(0x80001030, &mctl_ctl->mrctrl0);
+		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
+
+		writel(0x8, &mctl_ctl->mrctrl1);
+		writel(0x80002030, &mctl_ctl->mrctrl0);
+		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
+
+		writel(0, &mctl_ctl->mrctrl1);
+		writel(0x80003030, &mctl_ctl->mrctrl0);
+		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
+
+		writel(0, &mctl_ctl->mrctrl1);
+		writel(0x80004030, &mctl_ctl->mrctrl0);
+		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
+
+		writel(0x400, &mctl_ctl->mrctrl1);
+		writel(0x80005030, &mctl_ctl->mrctrl0);
+		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
+
+		/*
+		 * It's unknown why vendor driver writes MR6 3 times
+		 * in such manner. Possibly due to hardware issue.
+		 */
+
+		writel(0x862 | 0x80, &mctl_ctl->mrctrl1);
+		writel(0x80006030, &mctl_ctl->mrctrl0);
+		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
+
+		udelay(10);
+
+		writel(0x862 | 0x80, &mctl_ctl->mrctrl1);
+		writel(0x80006030, &mctl_ctl->mrctrl0);
+		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
+
+		udelay(10);
+
+		writel(0x862, &mctl_ctl->mrctrl1);
+		writel(0x80006030, &mctl_ctl->mrctrl0);
+		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
+		break;
 	case SUNXI_DRAM_TYPE_LPDDR3:
 		writel(mr0, &mctl_ctl->mrctrl1);
 		writel(0x800000f0, &mctl_ctl->mrctrl0);
@@ -1149,7 +1258,6 @@ static bool mctl_phy_init(const struct dram_para *para,
 		udelay(10);
 		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
 		break;
-	case SUNXI_DRAM_TYPE_DDR4:
 	default:
 		panic("This DRAM setup is currently not supported.\n");
 	};
@@ -1172,7 +1280,7 @@ static bool mctl_phy_init(const struct dram_para *para,
 
 	if (para->tpr10 & TPR10_READ_CALIBRATION) {
 		for (i = 0; i < 5; i++)
-			if (mctl_phy_read_calibration(config))
+			if (mctl_phy_read_calibration(para, config))
 				break;
 		if (i == 5) {
 			debug("read calibration failed!\n");
@@ -1234,13 +1342,15 @@ static bool mctl_ctrl_init(const struct dram_para *para,
 	case SUNXI_DRAM_TYPE_DDR3:
 		reg_val |= MSTR_BURST_LENGTH(8) | MSTR_DEVICETYPE_DDR3 | MSTR_2TMODE;
 		break;
+	case SUNXI_DRAM_TYPE_DDR4:
+		reg_val |= MSTR_BURST_LENGTH(8) | MSTR_DEVICETYPE_DDR4 | MSTR_2TMODE;
+		break;
 	case SUNXI_DRAM_TYPE_LPDDR3:
 		reg_val |= MSTR_BURST_LENGTH(8) | MSTR_DEVICETYPE_LPDDR3;
 		break;
 	case SUNXI_DRAM_TYPE_LPDDR4:
 		reg_val |= MSTR_BURST_LENGTH(16) | MSTR_DEVICETYPE_LPDDR4;
 		break;
-	case SUNXI_DRAM_TYPE_DDR4:
 	default:
 		panic("This DRAM setup is currently not supported.\n");
 	};
@@ -1257,6 +1367,7 @@ static bool mctl_ctrl_init(const struct dram_para *para,
 
 	switch (para->type) {
 	case SUNXI_DRAM_TYPE_DDR3:
+	case SUNXI_DRAM_TYPE_DDR4:
 		reg_val = 0x06000400;
 		break;
 	case SUNXI_DRAM_TYPE_LPDDR3:
@@ -1265,7 +1376,6 @@ static bool mctl_ctrl_init(const struct dram_para *para,
 	case SUNXI_DRAM_TYPE_LPDDR4:
 		reg_val = 0x04000400;
 		break;
-	case SUNXI_DRAM_TYPE_DDR4:
 	default:
 		panic("This DRAM setup is currently not supported.\n");
 	};
@@ -1335,6 +1445,13 @@ static void mctl_auto_detect_rank_width(const struct dram_para *para,
 	/* this is minimum size that it's supported */
 	config->cols = 8;
 	config->rows = 13;
+	if (para->type == SUNXI_DRAM_TYPE_DDR4) {
+		config->banks = 2;
+		config->bank_groups = 1;
+	} else {
+		config->banks = 3;
+		config->bank_groups = 0;
+	}
 
 	/*
 	 * Strategy here is to test most demanding combination first and least
@@ -1376,12 +1493,14 @@ static void mctl_auto_detect_dram_size(const struct dram_para *para,
 {
 	unsigned int shift;
 
-	/* max. config for columns, but not rows */
+	/* max. config for columns, banks and bank groups, but not rows */
 	config->cols = 11;
 	config->rows = 13;
+	config->banks = 3;
+	config->bank_groups = para->type == SUNXI_DRAM_TYPE_DDR4 ? 2 : 0;
 	mctl_core_init(para, config);
 
-	shift = config->bus_full_width + 1;
+	shift = config->bus_full_width + 1 + config->bank_groups;
 
 	/* detect column address bits */
 	for (config->cols = 8; config->cols < 11; config->cols++) {
@@ -1390,12 +1509,29 @@ static void mctl_auto_detect_dram_size(const struct dram_para *para,
 	}
 	debug("detected %u columns\n", config->cols);
 
+	if (para->type == SUNXI_DRAM_TYPE_DDR4) {
+		/* detect number of bank groups */
+		for (config->bank_groups = 1; config->bank_groups < 4; config->bank_groups++) {
+			if (mctl_mem_matches(1ULL << (config->bank_groups + 5)))
+				break;
+		}
+		if (config->bank_groups == 3)
+			config->bank_groups = 0;
+		debug("detected %u bank groups\n", config->bank_groups);
+
+		/* detect number of banks */
+		if (mctl_mem_matches(1ULL << (shift + 13)))
+			config->banks = 2;
+		debug("detected %u banks\n", config->banks);
+	}
+
 	/* reconfigure to make sure that all active rows are accessible */
 	config->rows = 18;
 	mctl_core_init(para, config);
 
 	/* detect row address bits */
-	shift = config->bus_full_width + 4 + config->cols;
+	shift = config->bus_full_width + 1 + config->bank_groups +
+		config->cols + config->banks;
 	for (config->rows = 13; config->rows < 18; config->rows++) {
 		if (mctl_mem_matches(1ULL << (config->rows + shift)))
 			break;
@@ -1405,16 +1541,22 @@ static void mctl_auto_detect_dram_size(const struct dram_para *para,
 
 static unsigned long mctl_calc_size(const struct dram_config *config)
 {
-	u8 width = config->bus_full_width ? 4 : 2;
+	unsigned int shift;
 
-	/* 8 banks */
-	return (1ULL << (config->cols + config->rows + 3)) * width * config->ranks;
+	shift = config->cols + config->rows +
+		config->banks + config->bank_groups +
+		config->bus_full_width + 1 +
+		config->ranks - 1;
+
+	return 1ULL << shift;
 }
 
 static const struct dram_para para = {
 	.clk = CONFIG_DRAM_CLK,
 #ifdef CONFIG_SUNXI_DRAM_H616_DDR3_1333
 	.type = SUNXI_DRAM_TYPE_DDR3,
+#elif defined(CONFIG_SUNXI_DRAM_H616_DDR4)
+	.type = SUNXI_DRAM_TYPE_DDR4,
 #elif defined(CONFIG_SUNXI_DRAM_H616_LPDDR3)
 	.type = SUNXI_DRAM_TYPE_LPDDR3,
 #elif defined(CONFIG_SUNXI_DRAM_H616_LPDDR4)

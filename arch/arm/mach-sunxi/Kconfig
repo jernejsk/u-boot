@@ -488,6 +488,9 @@ config SUNXI_DRAM_LPDDR3
 config SUNXI_DRAM_LPDDR4
 	bool
 
+config SUNXI_DRAM_DDR4
+	bool
+
 choice
 	prompt "DRAM Type and Timing"
 	default SUNXI_DRAM_DDR3_1333 if !MACH_SUN8I_V3S
@@ -546,6 +549,14 @@ config SUNXI_DRAM_H616_DDR3_1333
 	help
 	  This option is the DDR3 timing used by the boot0 on H616 TV boxes
 	  which use a DDR3-1333 timing.
+
+config SUNXI_DRAM_H616_DDR4
+	bool "DDR4 DRAM chips on the H616 DRAM controller"
+	select SUNXI_DRAM_DDR4
+	depends on DRAM_SUN50I_H616
+	help
+	  This option is the DDR4 timing used by the stock boot0 by
+	  Allwinner.
 
 config SUNXI_DRAM_DDR2_V3S
 	bool "DDR2 found in V3s chip"
