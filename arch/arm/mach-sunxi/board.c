@@ -26,6 +26,8 @@
 #include <asm/arch/timer.h>
 #include <asm/arch/tzpc.h>
 #include <asm/arch/mmc.h>
+#include <asm/arch/prcm.h>
+#include <linux/delay.h>
 
 #include <linux/compiler.h>
 
@@ -456,6 +458,9 @@ u32 spl_mmc_boot_mode(struct mmc *mmc, const u32 boot_device)
 
 void board_init_f(ulong dummy)
 {
+	struct sunxi_prcm_reg *const prcm =
+		(struct sunxi_prcm_reg *)SUNXI_PRCM_BASE;
+
 	sunxi_sram_init();
 
 	/* Enable non-secure access to some peripherals */
@@ -464,6 +469,22 @@ void board_init_f(ulong dummy)
 	clock_init();
 	timer_init();
 	gpio_init();
+
+	if (IS_ENABLED(CONFIG_MACH_SUN50I_H616)) {
+		/* this seems to enable PLLs on H616 */
+		setbits_le32(&prcm->sys_pwroff_gating, 0x10);
+		udelay(1);
+		setbits_le32(&prcm->res_cal_ctrl, 2);
+		udelay(1);
+	}
+
+	if (IS_ENABLED(CONFIG_MACH_SUN50I_H616) ||
+	    IS_ENABLED(CONFIG_MACH_SUN50I_H6)) {
+		clrbits_le32(&prcm->res_cal_ctrl, 1);
+		udelay(1);
+		setbits_le32(&prcm->res_cal_ctrl, 1);
+		udelay(1);
+	}
 
 	spl_init();
 	preloader_console_init();
