@@ -1593,5 +1593,7 @@ unsigned long sunxi_dram_init(void)
 
 	mctl_set_master_priority();
 
+	readl_relaxed(0x40000000);
+
 	return size;
 };
