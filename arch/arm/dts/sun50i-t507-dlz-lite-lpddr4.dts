@@ -1,0 +1,18 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (C) 2024 Jernej Skrabec <jernej.skrabec@gmail.com>
+ */
+
+/dts-v1/;
+
+#include "sun50i-t507-dlz-lite.dts"
+
+/ {
+	model = "DLZ-Lite LPDDR4";
+	compatible = "unknown,dlz-lite-lpddr4", "allwinner,sun50i-t507";
+};
+
+&reg_dcdc5 {
+	regulator-min-microvolt = <1100000>;
+	regulator-max-microvolt = <1100000>;
+};
