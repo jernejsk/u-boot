@@ -66,7 +66,7 @@ static bool sunxi_mmc_can_calibrate(void)
 
 static int mmc_set_mod_clk(struct sunxi_mmc_priv *priv, unsigned int hz)
 {
-	unsigned int pll, pll_hz, div, n, oclk_dly, sclk_dly;
+	unsigned int pll, pll_hz, div, n, oclk_dly, sclk_dly, clk;
 	bool new_mode = IS_ENABLED(CONFIG_MMC_SUNXI_HAS_NEW_MODE);
 	u32 val = 0;
 
@@ -74,7 +74,11 @@ static int mmc_set_mod_clk(struct sunxi_mmc_priv *priv, unsigned int hz)
 	if (IS_ENABLED(CONFIG_MACH_SUN8I_A83T) && priv->mmc_no != 2)
 		new_mode = false;
 
-	if (hz <= 24000000) {
+	clk = hz;
+	if (new_mode && priv->mmc_no == 2)
+		clk *= 2;
+
+	if (clk <= 24000000) {
 		pll = CCM_MMC_CTRL_OSCM24;
 		pll_hz = 24000000;
 	} else {
@@ -94,8 +98,8 @@ static int mmc_set_mod_clk(struct sunxi_mmc_priv *priv, unsigned int hz)
 #endif
 	}
 
-	div = pll_hz / hz;
-	if (pll_hz % hz)
+	div = pll_hz / clk;
+	if (pll_hz % clk)
 		div++;
 
 	n = 0;
@@ -150,7 +154,7 @@ static int mmc_set_mod_clk(struct sunxi_mmc_priv *priv, unsigned int hz)
 	       CCM_MMC_CTRL_M(div) | val, priv->mclkreg);
 
 	debug("mmc %u set mod-clk req %u parent %u n %u m %u rate %u\n",
-	      priv->mmc_no, hz, pll_hz, 1u << n, div, pll_hz / (1u << n) / div);
+	      priv->mmc_no, clk, pll_hz, 1u << n, div, pll_hz / (1u << n) / div);
 
 	return 0;
 }
