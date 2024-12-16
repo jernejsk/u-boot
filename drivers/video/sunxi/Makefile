@@ -5,3 +5,4 @@
 
 obj-$(CONFIG_VIDEO_SUNXI) += sunxi_display.o simplefb_common.o lcdc.o tve_common.o ../videomodes.o
 obj-$(CONFIG_VIDEO_DE2) += sunxi_de2.o sunxi_dw_hdmi.o simplefb_common.o lcdc.o sunxi_lcd.o
+obj-$(CONFIG_VIDEO_DE3) += sunxi_de3.o lcdc.o sunxi_lcd.o

@@ -17,6 +17,7 @@
 #include <asm/global_data.h>
 #include <asm/gpio.h>
 #include <sunxi_gpio.h>
+#include <panel.h>
 
 struct sunxi_lcd_priv {
 	struct display_timing timing;
@@ -33,6 +34,14 @@ static void sunxi_lcdc_config_pinmux(void)
 		sunxi_gpio_set_drv(pin, 3);
 	}
 #endif
+#ifdef CONFIG_MACH_SUN50I_H616
+	int pin;
+
+	for (pin = SUNXI_GPD(0); pin <= SUNXI_GPD(9); pin++) {
+		sunxi_gpio_set_cfgpin(pin, SUNXI_GPD_LVDS0);
+		sunxi_gpio_set_drv(pin, 3);
+	}
+#endif
 }
 
 static int sunxi_lcd_enable(struct udevice *dev, int bpp,
@@ -45,11 +54,20 @@ static int sunxi_lcd_enable(struct udevice *dev, int bpp,
 	struct sunxi_lcd_priv *priv = dev_get_priv(dev);
 	struct udevice *backlight;
 	int clk_div, clk_double, ret;
+	struct udevice *panel;
 
+#if defined(CONFIG_SUNXI_DE3)
+	writel(BIT(RESET_SHIFT) | BIT(GATE_SHIFT), &ccm->tcon_top_gate_reset);
+	writel(BIT(RESET_SHIFT) | BIT(GATE_SHIFT), &ccm->tcon_lcd_gate_reset);
+	writel(BIT(RESET_SHIFT), &ccm->lvds_reset);
+	writel(0, SUNXI_TCON_TOP_BASE + 0x00);
+	writel(0, SUNXI_TCON_TOP_BASE + 0x1c);
+#else
 	/* Reset off */
 	setbits_le32(&ccm->ahb_reset1_cfg, 1 << AHB_RESET_OFFSET_LCD0);
 	/* Clock on */
 	setbits_le32(&ccm->ahb_gate1, 1 << AHB_GATE_OFFSET_LCD0);
+#endif
 
 	lcdc_init(lcdc);
 	sunxi_lcdc_config_pinmux();
@@ -58,6 +76,12 @@ static int sunxi_lcd_enable(struct udevice *dev, int bpp,
 	lcdc_tcon0_mode_set(lcdc, edid, clk_div, false,
 			    priv->panel_bpp, CONFIG_VIDEO_LCD_DCLK_PHASE);
 	lcdc_enable(lcdc, priv->panel_bpp);
+
+	ret = uclass_get_device(UCLASS_PANEL, 0, &panel);
+	if (ret == 0) {
+		if (panel_enable_backlight(panel) == 0)
+			return 0;
+	}
 
 	ret = uclass_get_device(UCLASS_PANEL_BACKLIGHT, 0, &backlight);
 	if (!ret)
@@ -115,6 +139,11 @@ static int sunxi_lcd_probe(struct udevice *dev)
 		return ret;
 	}
 
+	if (panel_get_display_timing(cdev, &priv->timing) == 0) {
+		priv->panel_bpp = 24;
+		return 0;
+	}
+
 	if (fdtdec_decode_display_timing(gd->fdt_blob, dev_of_offset(cdev),
 					 0, &priv->timing)) {
 		debug("%s: Failed to decode display timing\n", __func__);
@@ -145,7 +174,7 @@ U_BOOT_DRIVER(sunxi_lcd) = {
 	.priv_auto	= sizeof(struct sunxi_lcd_priv),
 };
 
-#ifdef CONFIG_MACH_SUN50I
+#if 1 //defined(CONFIG_MACH_SUN50I) || defined(CONFIG_MACH_SUN50I_H616)
 U_BOOT_DRVINFO(sunxi_lcd) = {
 	.name = "sunxi_lcd"
 };

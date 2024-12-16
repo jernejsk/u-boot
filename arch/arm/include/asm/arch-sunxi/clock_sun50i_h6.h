@@ -211,7 +211,9 @@ struct sunxi_ccm_reg {
 	u32 tcon_tv0_clk_cfg;	/* 0xb80 TCON TV0 clock control */
 	u8 reserved_0xb84[24];
 	u32 tcon_tv_gate_reset;	/* 0xb9c TCON TV gate/reset control */
-	u8 reserved_0xba0[96];
+	u8 reserved_0xba0[12];
+	u32 lvds_reset;		/* 0xbac LVDS reset control */
+	u8 reserved_0xbb0[80];
 	u32 csi_misc_clk_cfg;	/* 0xc00 CSI MISC clock control */
 	u32 csi_top_clk_cfg;	/* 0xc04 CSI TOP clock control */
 	u32 csi_mclk_cfg;	/* 0xc08 CSI Master clock control */
@@ -236,6 +238,18 @@ struct sunxi_ccm_reg {
 #define CCM_PLL1_CTRL_P(p)		((p) << 16)
 #define CCM_PLL1_CTRL_N(n)		(((n) - 1) << 8)
 
+/* pll3 bit field */
+#define CCM_PLL3_CTRL_EN		BIT(31)
+#define CCM_PLL3_LOCK_EN		BIT(29)
+#define CCM_PLL3_LOCK			BIT(28)
+#define CCM_PLL3_OUT_EN			BIT(27)
+#define CCM_PLL3_CTRL_N_SHIFT		8
+#define CCM_PLL3_CTRL_N_MASK		(0xff << CCM_PLL3_CTRL_N_SHIFT)
+#define CCM_PLL3_CTRL_N(n)		((((n) - 1) & 0xff) << 8)
+#define CCM_PLL3_CTRL_M_SHIFT		1
+#define CCM_PLL3_CTRL_M_MASK		(1 << CCM_PLL3_CTRL_M_SHIFT)
+#define CCM_PLL3_CTRL_M(n)		((((n) - 1) & 1) << 1)
+
 /* pll5 bit field */
 #define CCM_PLL5_CTRL_EN		BIT(31)
 #define CCM_PLL5_LOCK_EN		BIT(29)
@@ -257,6 +271,18 @@ struct sunxi_ccm_reg {
 #define CCM_PLL6_CTRL_DIV1_MASK		(0x1 << CCM_PLL6_CTRL_DIV1_SHIFT)
 #define CCM_PLL6_CTRL_DIV2_SHIFT	1
 #define CCM_PLL6_CTRL_DIV2_MASK		(0x1 << CCM_PLL6_CTRL_DIV2_SHIFT)
+
+/* pll10 bit field */
+#define CCM_PLL10_CTRL_EN		BIT(31)
+#define CCM_PLL10_LOCK_EN		BIT(29)
+#define CCM_PLL10_LOCK			BIT(28)
+#define CCM_PLL10_OUT_EN		BIT(27)
+#define CCM_PLL10_CTRL_N_SHIFT		8
+#define CCM_PLL10_CTRL_N_MASK		(0xff << CCM_PLL10_CTRL_N_SHIFT)
+#define CCM_PLL10_CTRL_N(n)		((((n) - 1) & 0xff) << 8)
+#define CCM_PLL10_CTRL_M_SHIFT		0
+#define CCM_PLL10_CTRL_M_MASK		(1 << CCM_PLL10_CTRL_M_SHIFT)
+#define CCM_PLL10_CTRL_M(n)		((((n) - 1) & 1) << 0)
 
 /* cpu_axi bit field*/
 #define CCM_CPU_AXI_MUX_MASK		(0x3 << 24)
@@ -333,8 +359,18 @@ struct sunxi_ccm_reg {
 #define CCM_MMC_CTRL_OCLK_DLY(a)	((void) (a), 0)
 #define CCM_MMC_CTRL_SCLK_DLY(a)	((void) (a), 0)
 
+/* CCM bits common to all Display Engine 2.0 clock ctrl regs */
+#define CCM_DE3_CTRL_M(n)		((((n) - 1) & 0xf) << 0)
+#define CCM_DE3_CTRL_PLL_MASK		(3 << 24)
+#define CCM_DE3_CTRL_PLL10		(0 << 24)
+#define CCM_DE3_CTRL_PLL6_2X		(1 << 24)
+#define CCM_DE3_CTRL_GATE		(0x1 << 31)
+
 #ifndef __ASSEMBLY__
 void clock_set_pll1(unsigned int hz);
+void clock_set_pll3(unsigned int hz);
+void clock_set_pll10(unsigned int hz);
+unsigned int clock_get_pll3(void);
 unsigned int clock_get_pll6(void);
 #endif
 

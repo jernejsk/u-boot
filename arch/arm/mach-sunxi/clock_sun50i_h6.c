@@ -135,6 +135,61 @@ int clock_twi_onoff(int port, int state)
 }
 #endif /* CONFIG_XPL_BUILD */
 
+#ifdef CONFIG_SUNXI_DE3
+/* video clocks */
+unsigned int clock_get_pll3(void)
+{
+	struct sunxi_ccm_reg *const ccm =
+		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
+	uint32_t rval = readl(&ccm->pll3_cfg);
+	int n = ((rval & CCM_PLL3_CTRL_N_MASK) >> CCM_PLL3_CTRL_N_SHIFT) + 1;
+	int m = ((rval & CCM_PLL3_CTRL_M_MASK) >> CCM_PLL3_CTRL_M_SHIFT) + 1;
+
+	/* Multiply by 1000 after dividing by m to avoid integer overflows */
+	return (24000 * n / m) * 1000 * 4;
+}
+
+void clock_set_pll3(unsigned int clk)
+{
+	struct sunxi_ccm_reg * const ccm =
+		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
+	const int m = 2; /* 12 MHz steps */
+
+	clk *= 4;
+
+	if (clk == 0) {
+		clrbits_le32(&ccm->pll3_cfg, CCM_PLL3_CTRL_EN);
+		return;
+	}
+
+	/* PLL3 rate = 24000000 * n / m */
+	writel(CCM_PLL3_CTRL_EN | CCM_PLL3_LOCK_EN | CCM_PLL3_OUT_EN |
+	       CCM_PLL3_CTRL_N(clk / (24000000 / m)) | CCM_PLL3_CTRL_M(m),
+	       &ccm->pll3_cfg);
+}
+
+/* DE clock */
+void clock_set_pll10(unsigned int clk)
+{
+	struct sunxi_ccm_reg * const ccm =
+		(struct sunxi_ccm_reg *)SUNXI_CCM_BASE;
+	const int m = 1; /* 24 MHz steps */
+
+	if (clk == 0) {
+		clrbits_le32(&ccm->pll10_cfg, CCM_PLL10_CTRL_EN);
+		return;
+	}
+
+	/* PLL10 rate = 24000000 * n / m */
+	writel(CCM_PLL10_CTRL_EN | CCM_PLL10_LOCK_EN | CCM_PLL10_OUT_EN |
+	       CCM_PLL10_CTRL_N(clk / (24000000 / m)) | CCM_PLL10_CTRL_M(m),
+	       &ccm->pll10_cfg);
+
+	while (!(readl(&ccm->pll10_cfg) & CCM_PLL10_LOCK))
+		;
+}
+#endif
+
 /* PLL_PERIPH0 clock, used by the MMC driver */
 unsigned int clock_get_pll6(void)
 {

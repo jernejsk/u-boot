@@ -44,6 +44,10 @@
 #define SUNXI_R_WDOG_BASE		0x07020400
 #define SUNXI_R_TWI_BASE		0x07081400
 
+#define SUNXI_LCD0_BASE			0x06511000
+#define SUNXI_DE3_BASE			0x01000000
+#define SUNXI_TCON_TOP_BASE		0x06510000
+
 #ifndef __ASSEMBLY__
 void sunxi_board_init(void);
 void sunxi_reset(void);

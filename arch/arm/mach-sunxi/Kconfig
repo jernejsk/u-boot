@@ -454,6 +454,7 @@ config MACH_SUN50I_H616
 	bool "sun50i (Allwinner H616)"
 	select ARM64
 	select DRAM_SUN50I_H616
+	select SUNXI_DE3
 	select SUN50I_GEN_H6
 	imply OF_UPSTREAM
 
@@ -1028,6 +1029,9 @@ config VIDEO_LCD_IF_LVDS
 config SUNXI_DE2
 	bool
 
+config SUNXI_DE3
+	bool
+
 config VIDEO_DE2
 	bool "Display Engine 2 video driver"
 	depends on SUNXI_DE2
@@ -1040,6 +1044,15 @@ config VIDEO_DE2
 	Say y here if you want to build DE2 video driver which is present on
 	newer SoCs. Currently only HDMI output is supported.
 
+config VIDEO_DE3
+	bool "Display Engine 3 video driver"
+	depends on SUNXI_DE3
+	select VIDEO
+	select DISPLAY
+	default y
+	---help---
+	Say y here if you want to build DE3 video driver which is present on
+	newer SoCs. Currently only LCD output is supported.
 
 choice
 	prompt "LCD panel support"

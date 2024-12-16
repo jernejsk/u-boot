@@ -83,7 +83,7 @@ struct sunxi_lcdc_reg {
 #define SUNXI_LCDC_TCON0_TIMING_H_TOTAL(n)	(((n) - 1) << 16)
 #define SUNXI_LCDC_TCON0_TIMING_V_BP(n)		(((n) - 1) << 0)
 #define SUNXI_LCDC_TCON0_TIMING_V_TOTAL(n)	(((n) * 2) << 16)
-#ifdef CONFIG_SUNXI_GEN_SUN6I
+#if defined(CONFIG_SUNXI_GEN_SUN6I) || defined(CONFIG_VIDEO_DE3)
 #define SUNXI_LCDC_TCON0_LVDS_CLK_SEL_TCON0	(1 << 20)
 #else
 #define SUNXI_LCDC_TCON0_LVDS_CLK_SEL_TCON0	0 /* NA */
@@ -102,7 +102,7 @@ struct sunxi_lcdc_reg {
 #define SUNXI_LCDC_MUX_CTRL_SRC0(x)		((x) << 0)
 #define SUNXI_LCDC_MUX_CTRL_SRC1_MASK		(0xf << 4)
 #define SUNXI_LCDC_MUX_CTRL_SRC1(x)		((x) << 4)
-#ifdef CONFIG_SUNXI_GEN_SUN6I
+#if defined(CONFIG_SUNXI_GEN_SUN6I) || defined(CONFIG_VIDEO_DE3)
 #define SUNXI_LCDC_LVDS_ANA0			0x40040320
 #define SUNXI_LCDC_LVDS_ANA0_EN_MB		(1 << 31)
 #define SUNXI_LCDC_LVDS_ANA0_DRVC		(1 << 24)

@@ -11,6 +11,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/leds/common.h>
+#include <dt-bindings/pwm/pwm.h>
 
 / {
 	model = "MYIR MYD-YT507H";
@@ -26,6 +27,14 @@
 		stdout-path = "serial0:115200n8";
 	};
 
+	backlight: backlight {
+		compatible = "pwm-backlight";
+		pwms = <&pwm 0 50000 0>;
+		power-supply = <&reg_sw>;
+		brightness-levels = <0 1 2 4 8 16 32 64 128 255>;
+		default-brightness-level = <9>;
+	};
+
 	leds {
 		compatible = "gpio-leds";
 
@@ -34,6 +43,34 @@
 			color = <LED_COLOR_ID_BLUE>;
 			gpios = <&pio 4 19 GPIO_ACTIVE_HIGH>; /* PE19 */
 			default-state = "on";
+		};
+	};
+
+	panel {
+		compatible = "panel-lvds";
+		backlight = <&backlight>;
+		power-supply = <&reg_bldo1>;
+
+		width-mm = <180>;
+		height-mm = <100>;
+		data-mapping = "vesa-24";
+
+		panel-timing {
+			clock-frequency = <71000000>;
+			hactive = <1024>;
+			vactive = <600>;
+			hsync-len = <116>;
+			hfront-porch = <44>;
+			hback-porch = <140>;
+			vfront-porch = <5>;
+			vback-porch = <21>;
+			vsync-len = <3>;
+		};
+
+		port {
+			panel_input: endpoint {
+				remote-endpoint = <&tcon_lcd0_out_lcd>;
+			};
 		};
 	};
 
@@ -56,7 +93,7 @@
 
 	reg_vcc3v3_io: vcc3v3-io {
 		compatible = "regulator-fixed";
-		vin-supply = <&reg_vcc3v3>;
+		vin-supply = <&reg_sw>;
 		regulator-name = "vcc-3v3-io";
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
@@ -68,6 +105,14 @@
 &cpu0 {
 	cpu-supply = <&reg_dcdc2>;
 };
+
+&de {
+	status = "okay";
+};
+
+/*&ehci0 {
+	status = "okay";
+};*/
 
 &ehci1 {
 	status = "okay";
@@ -97,6 +142,28 @@
 	allwinner,tx-delay-ps = <700>;
 	allwinner,rx-delay-ps = <0>;
 	status = "okay";
+};
+
+&gpu {
+	mali-supply = <&reg_dcdc4>;
+	status = "okay";
+};
+
+&i2c4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c4_ph_pins>;
+	clock-frequency = <200000>;
+	status = "okay";
+
+	touchscreen@38 {
+		compatible = "edt,edt-ft5306";
+		reg = <0x38>;
+		interrupt-parent = <&pio>;
+		interrupts = <3 24 IRQ_TYPE_EDGE_FALLING>;
+		reset-gpios = <&pio 3 27 GPIO_ACTIVE_LOW>;
+		touchscreen-size-x = <1024>;
+		touchscreen-size-y = <600>;
+	};
 };
 
 &mdio0 {
@@ -157,6 +224,12 @@
 	vcc-pg-supply = <&reg_dcdc1>;
 	vcc-ph-supply = <&reg_dcdc1>;
 	vcc-pi-supply = <&reg_dcdc6>;
+};
+
+&pwm {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwm0_pin>;
+	status = "okay";
 };
 
 &r_i2c {
@@ -309,9 +382,23 @@
 			};
 
 			reg_sw: sw {
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
 				regulator-name = "vcc-lcd-pd";
 			};
 		};
+	};
+};
+
+&tcon_lcd0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&lvds0_pins>;
+	status = "okay";
+};
+
+&tcon_lcd0_out {
+	tcon_lcd0_out_lcd: endpoint {
+		remote-endpoint = <&panel_input>;
 	};
 };
 

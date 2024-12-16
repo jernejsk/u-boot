@@ -281,6 +281,14 @@ config SIMPLE_PANEL
 	  This turns on a simple panel driver that enables a compatible
 	  video panel.
 
+config LVDS_PANEL
+	bool "Enable lvds panel support"
+	depends on PANEL && BACKLIGHT
+	default y
+	help
+	  This turns on a lvds panel driver that enables a compatible
+	  video panel.
+
 config PANEL_HX8238D
 	bool "Enable Himax HX-8238D LCD driver"
 	depends on PANEL
