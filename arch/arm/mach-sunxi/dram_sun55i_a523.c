@@ -407,90 +407,9 @@ static bool mctl_phy_read_training(const struct dram_para *para,
 
 static bool mctl_phy_write_training(const struct dram_config *config)
 {
-	u32 val1, val2, *ptr1, *ptr2;
-	bool result = true;
-	int i;
+	panic("Write training is not implemented!\n");
 
-	writel(0, SUNXI_DRAM_PHY0_BASE + 0x134);
-	writel(0, SUNXI_DRAM_PHY0_BASE + 0x138);
-	writel(0, SUNXI_DRAM_PHY0_BASE + 0x19c);
-	writel(0, SUNXI_DRAM_PHY0_BASE + 0x1a0);
-
-	clrsetbits_le32(SUNXI_DRAM_PHY0_BASE + 0x198, 0xc, 8);
-
-	setbits_le32(SUNXI_DRAM_PHY0_BASE + 0x190, 0x10);
-	setbits_le32(SUNXI_DRAM_PHY0_BASE + 0x190, 0x20);
-
-	mctl_await_completion((u32 *)(SUNXI_DRAM_PHY0_BASE + 0x8e0), 3, 3);
-	if (readl(SUNXI_DRAM_PHY0_BASE + 0x8e0) & 0xc)
-		result = false;
-
-	if (config->bus_full_width) {
-		mctl_await_completion((u32 *)(SUNXI_DRAM_PHY0_BASE + 0xae0), 3, 3);
-		if (readl(SUNXI_DRAM_PHY0_BASE + 0xae0) & 0xc)
-			result = false;
-	}
-
-	ptr1 = (u32 *)(SUNXI_DRAM_PHY0_BASE + 0x938);
-	ptr2 = (u32 *)(SUNXI_DRAM_PHY0_BASE + 0x8f0);
-	for (i = 0; i < 9; i++) {
-		val1 = readl(&ptr1[i]);
-		val2 = readl(&ptr2[i]);
-		if (val1 - val2 <= 6)
-			result = false;
-	}
-	ptr1 = (u32 *)(SUNXI_DRAM_PHY0_BASE + 0x95c);
-	ptr2 = (u32 *)(SUNXI_DRAM_PHY0_BASE + 0x914);
-	for (i = 0; i < 9; i++) {
-		val1 = readl(&ptr1[i]);
-		val2 = readl(&ptr2[i]);
-		if (val1 - val2 <= 6)
-			result = false;
-	}
-
-	if (config->bus_full_width) {
-		ptr1 = (u32 *)(SUNXI_DRAM_PHY0_BASE + 0xb38);
-		ptr2 = (u32 *)(SUNXI_DRAM_PHY0_BASE + 0xaf0);
-		for (i = 0; i < 9; i++) {
-			val1 = readl(&ptr1[i]);
-			val2 = readl(&ptr2[i]);
-			if (val1 - val2 <= 6)
-				result = false;
-		}
-		ptr1 = (u32 *)(SUNXI_DRAM_PHY0_BASE + 0xb5c);
-		ptr2 = (u32 *)(SUNXI_DRAM_PHY0_BASE + 0xb14);
-		for (i = 0; i < 9; i++) {
-			val1 = readl(&ptr1[i]);
-			val2 = readl(&ptr2[i]);
-			if (val1 - val2 <= 6)
-				result = false;
-		}
-	}
-
-	clrbits_le32(SUNXI_DRAM_PHY0_BASE + 0x190, 0x60);
-
-	if (config->ranks == 2) {
-		clrsetbits_le32(SUNXI_DRAM_PHY0_BASE + 0x198, 0xc, 4);
-
-		setbits_le32(SUNXI_DRAM_PHY0_BASE + 0x190, 0x10);
-		setbits_le32(SUNXI_DRAM_PHY0_BASE + 0x190, 0x20);
-
-		mctl_await_completion((u32 *)(SUNXI_DRAM_PHY0_BASE + 0x8e0), 3, 3);
-		if (readl(SUNXI_DRAM_PHY0_BASE + 0x8e0) & 0xc)
-			result = false;
-
-		if (config->bus_full_width) {
-			mctl_await_completion((u32 *)(SUNXI_DRAM_PHY0_BASE + 0xae0), 3, 3);
-			if (readl(SUNXI_DRAM_PHY0_BASE + 0xae0) & 0xc)
-				result = false;
-		}
-
-		clrbits_le32(SUNXI_DRAM_PHY0_BASE + 0x190, 0x60);
-	}
-
-	clrbits_le32(SUNXI_DRAM_PHY0_BASE + 0x198, 0xc);
-
-	return result;
+	return false;
 }
 
 static void mctl_phy_bit_delay_compensation(const struct dram_para *para,
@@ -1379,31 +1298,6 @@ static void sunxi_nsi_init(void)
     writel(0x0, 0x02020600);
 }
 
-static void init_something(void)
-
-{
-	u32 *ptr;
-
-	ptr = (u32*)0x02000804;
-	do {
-		*ptr++ = 0xffffffff;
-	} while (ptr != (u32 *)0x20008e4);
-
-	writel(0, 0x07002400);
-	writel(0, 0x07002404);
-	writel(0, 0x07002408);
-
-	writel(0xffffffff, 0x07002004);
-	writel(0xffffffff, 0x07002014);
-	writel(0xffffffff, 0x07002024);
-	setbits_le32(0x07010290, 7);
-
-	writel(7, 0x02001f00);
-	writel(0xffff, 0x03002020);
-	writel(3, 0x020008e0);
-	writel(7, 0x07102008);
-}
-
 unsigned long sunxi_dram_init(void)
 {
 	struct dram_config config;
@@ -1444,7 +1338,6 @@ unsigned long sunxi_dram_init(void)
 	size = mctl_calc_size(&config);
 
 	sunxi_nsi_init();
-	init_something();
 
 	return size;
 };
