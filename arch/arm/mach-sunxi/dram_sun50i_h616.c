@@ -1380,12 +1380,12 @@ static void mctl_auto_detect_dram_size(const struct dram_para *para,
 	debug("detected %u columns\n", config->cols);
 
 	/* reconfigure to make sure that all active rows are accessible */
-	config->rows = 18;
+	config->rows = 17;
 	mctl_core_init(para, config);
 
 	/* detect row address bits */
 	shift = config->bus_full_width + 4 + config->cols;
-	for (config->rows = 13; config->rows < 18; config->rows++) {
+	for (config->rows = 13; config->rows < 17; config->rows++) {
 		if (mctl_mem_matches(1ULL << (config->rows + shift)))
 			break;
 	}
