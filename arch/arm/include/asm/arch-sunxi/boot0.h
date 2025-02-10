@@ -26,6 +26,8 @@
 	.word	0xe580e004	// str     lr, [r0, #4]
 	.word	0xe10fe000	// mrs     lr, CPSR
 	.word	0xe580e008	// str     lr, [r0, #8]
+	.word	0xe101e300	// mrs     lr, SP_irq
+	.word	0xe580e014	// str     lr, [r0, #20]
 	.word	0xee11ef10	// mrc     15, 0, lr, cr1, cr0, {0}
 	.word	0xe580e00c	// str     lr, [r0, #12]
 	.word	0xee1cef10	// mrc     15, 0, lr, cr12, cr0, {0}
