@@ -1396,7 +1396,7 @@ static bool mctl_check_pattern(ulong offset)
 static void mctl_auto_detect_dram_size(const struct dram_para *para,
 				       struct dram_config *config)
 {
-	unsigned int shift, cols, rows;
+	unsigned int shift, cols, rows, found;
 	u32 buffer[16];
 
 	/* max. config for columns, but not rows */
@@ -1416,10 +1416,15 @@ static void mctl_auto_detect_dram_size(const struct dram_para *para,
 	shift = config->bus_full_width + 1;
 
 	/* detect column address bits */
+	found = 0;
 	for (cols = 8; cols < 11; cols++) {
-		if (mctl_check_pattern(1ULL << (cols + shift)))
+		if (mctl_check_pattern(1ULL << (cols + shift))) {
+			found = 1;
 			break;
+		}
 	}
+	if (!found)
+		panic("DRAM init failed: Can't detect number of columns!");
 	debug("detected %u columns\n", cols);
 
 	/* restore data */
@@ -1437,10 +1442,15 @@ static void mctl_auto_detect_dram_size(const struct dram_para *para,
 
 	/* detect row address bits */
 	shift = config->bus_full_width + 4 + config->cols;
+	found = 0;
 	for (rows = 13; rows < 17; rows++) {
-		if (mctl_check_pattern(1ULL << (rows + shift)))
+		if (mctl_check_pattern(1ULL << (rows + shift))) {
+			found = 1;
 			break;
+		}
 	}
+	if (!found)
+		panic("DRAM init failed: Can't detect number of rows!");
 	debug("detected %u rows\n", rows);
 
 	/* restore data again */
