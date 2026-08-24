@@ -1196,7 +1196,6 @@ static const struct dram_para para = {
 	.ca_dri = CONFIG_DRAM_SUNXI_CA_DRI,
 	.tpr0 = CONFIG_DRAM_SUNXI_TPR0,
 	.tpr1 = CONFIG_DRAM_SUNXI_TPR1,
-	.tpr2 = CONFIG_DRAM_SUNXI_TPR2,
 	.tpr6 = CONFIG_DRAM_SUNXI_TPR6,
 	.tpr10 = CONFIG_DRAM_SUNXI_TPR10,
 };
