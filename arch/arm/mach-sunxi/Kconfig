@@ -111,6 +111,30 @@ config DRAM_SUNXI_MR13
 	help
 	  MR13 value from vendor DRAM settings.
 
+config DRAM_SUNXI_MR11
+	hex "LPDDR4 MR11 value"
+	depends on MACH_SUN55I_A523
+	default 0x4
+	help
+	  Pull-up calibration for the command and address bus, from the board's
+	  own vendor parameters.
+
+config DRAM_SUNXI_MR12
+	hex "LPDDR4 MR12 value"
+	depends on MACH_SUN55I_A523
+	default 0x72
+	help
+	  Reference voltage the DRAM samples the command and address bus
+	  against, from the board's own vendor parameters.
+
+config DRAM_SUNXI_MR13
+	hex "LPDDR4 MR13 value"
+	depends on MACH_SUN55I_A523
+	default 0x0
+	help
+	  Mode register holding the frequency set point and a few switches,
+	  from the board's own vendor parameters.
+
 config DRAM_SUNXI_MR14
 	hex "DRAM MR14 parameter"
 	depends on DRAM_SUN50I_A133
@@ -171,6 +195,24 @@ config DRAM_SUNXI_TPR12
 	default 0x0
 	help
 	  TPR12 value from vendor DRAM settings.
+
+config DRAM_SUNXI_MR14
+	hex "LPDDR4 MR14 value"
+	depends on MACH_SUN55I_A523
+	default 0x8
+	help
+	  Reference voltage the DRAM samples the data lines against, as the
+	  board's own vendor parameters give it.  It belongs to the board
+	  rather than to the SoC, and a value meant for a different board shows
+	  up as memory that only misbehaves at the higher clock rates.
+
+config DRAM_SUNXI_MR22
+	hex "LPDDR4 MR22 value"
+	depends on MACH_SUN55I_A523
+	default 0x26
+	help
+	  On-die termination for the data bus, from the board's own vendor
+	  parameters.
 
 config DRAM_SUNXI_TPR13
 	hex "DRAM TPR13 parameter"

@@ -105,7 +105,8 @@ void mctl_set_timing_params(u32 clk)
 	writel((mr1 << 16) | mr2, &mctl_ctl->init[3]);
 	writel(0x00330000, &mctl_ctl->init[4]);
 	writel(0x00040072, &mctl_ctl->init[6]);
-	writel(0x00260008, &mctl_ctl->init[7]);
+	writel((CONFIG_DRAM_SUNXI_MR22 << 16) | CONFIG_DRAM_SUNXI_MR14,
+	       &mctl_ctl->init[7]);
 
 	clrsetbits_le32(&mctl_ctl->rankctl, 0xff0, 0x660);
 

@@ -1218,23 +1218,23 @@ static bool mctl_phy_init(const struct dram_para *para,
 		writel(0x800000f0, &mctl_ctl->mrctrl0);
 		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
 
-		writel(0xb04, &mctl_ctl->mrctrl1);
+		writel(0xb00 | CONFIG_DRAM_SUNXI_MR11, &mctl_ctl->mrctrl1);
 		writel(0x800000f0, &mctl_ctl->mrctrl0);
 		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
 
-		writel(0xc72, &mctl_ctl->mrctrl1);
+		writel(0xc00 | CONFIG_DRAM_SUNXI_MR12, &mctl_ctl->mrctrl1);
 		writel(0x800000f0, &mctl_ctl->mrctrl0);
 		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
 
-		writel(0xd00, &mctl_ctl->mrctrl1);
+		writel(0xd00 | CONFIG_DRAM_SUNXI_MR13, &mctl_ctl->mrctrl1);
 		writel(0x800000f0, &mctl_ctl->mrctrl0);
 		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
 
-		writel(0xe08, &mctl_ctl->mrctrl1);
+		writel(0xe00 | CONFIG_DRAM_SUNXI_MR14, &mctl_ctl->mrctrl1);
 		writel(0x800000f0, &mctl_ctl->mrctrl0);
 		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
 
-		writel(0x1626, &mctl_ctl->mrctrl1);
+		writel(0x1600 | CONFIG_DRAM_SUNXI_MR22, &mctl_ctl->mrctrl1);
 		writel(0x800000f0, &mctl_ctl->mrctrl0);
 		mctl_await_completion(&mctl_ctl->mrctrl0, BIT(31), 0);
 		break;
