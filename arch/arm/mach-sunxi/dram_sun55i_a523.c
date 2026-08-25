@@ -1276,6 +1276,8 @@ unsigned long sunxi_dram_init(void)
 {
 	struct dram_config config;
 	unsigned long size;
+	bool ok = false;
+	int i;
 
 	config.clk = 360;
 	config.tpr13 = 0;
@@ -1309,10 +1311,29 @@ unsigned long sunxi_dram_init(void)
 	config.tpr13 = CONFIG_DRAM_SUNXI_TPR13;
 	config.tpr14 = CONFIG_DRAM_SUNXI_TPR14;
 
-	mctl_core_init(&para, &config);
+	/*
+	 * Not every boot leaves usable eyes, so redo the initialisation when
+	 * the scan says they are marginal, as the vendor firmware does.
+	 */
+	for (i = 0; i < 5; i++) {
+		ok = mctl_core_init(&para, &config);
+		if (!ok) {
+			debug("DRAM: initialisation failed, redoing it\n");
+			continue;
+		}
 
-	if (mctl_eye_scan_wanted(&config) && !mctl_phy_dx_eye_scan(&config))
-		debug("DRAM: the eye scan found marginal bits\n");
+		if (!mctl_eye_scan_wanted(&config))
+			break;
+		if (mctl_phy_dx_eye_scan(&config))
+			break;
+		debug("DRAM: marginal bits, redoing the initialisation\n");
+	}
+
+	if (i == 5)
+		debug("DRAM: still marginal, continuing anyway\n");
+
+	if (!ok)
+		panic("DRAM initialisation failed\n");
 
 	size = mctl_calc_size(&config);
 

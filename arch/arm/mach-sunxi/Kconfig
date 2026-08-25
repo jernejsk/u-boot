@@ -208,9 +208,9 @@ config DRAM_SUNXI_TPR13
 	hex "DRAM TPR13 parameter"
 	default 0x0
 	help
-	  TPR13 value from vendor DRAM settings.  It gates optional features;
-	  bits 0 and 2 set with bit 11 clear ask for the data bit eye scan,
-	  and bits 9:8 scale the minimum acceptable eye width.
+	  TPR13 value from vendor DRAM settings.  Of it, only bits 9:8 are
+	  used here, to scale the minimum eye width the data bit eye scan
+	  accepts.  The scan itself is asked for by TPR10 bits 17 and 18.
 
 config DRAM_SUNXI_MR14
 	hex "LPDDR4 MR14 value"
