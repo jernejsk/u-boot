@@ -516,350 +516,115 @@ static bool mctl_phy_write_training(const struct dram_config *config)
 	return result;
 }
 
+/* One of the four copies the PHY keeps of a byte lane's delays. */
+struct a523_delay_copy {
+	u16 packed;		/* bits 0-3, bits 4-7 four bytes later */
+	u16 single;		/* the data mask */
+	bool single_high;	/* in the upper half of that register */
+};
+
+static const struct a523_delay_copy a523_rx_copy[] = {
+	{ 0x034, 0x030, true }, { 0x054, 0x050, true },
+	{ 0x110, 0x10c, false }, { 0x130, 0x12c, true },
+};
+
+static const struct a523_delay_copy a523_tx_copy[] = {
+	{ 0x024, 0x020, false }, { 0x044, 0x040, false },
+	{ 0x100, 0x10c, true }, { 0x120, 0x11c, false },
+};
+
+#define PHY_DX_BASE(lane)	((uintptr_t)SUNXI_DRAM_PHY0_BASE + 0x300 + \
+				 (lane) * 0x180)
+
+static void mctl_phy_bit_delay_begin(bool tx)
+{
+	setbits_le32(SUNXI_DRAM_PHY0_BASE + 0x84, BIT(18));
+}
+
+static void mctl_phy_bit_delay_set(bool tx, unsigned int lane, unsigned int bit,
+			    u8 delay)
+{
+	const struct a523_delay_copy *copy = tx ? a523_tx_copy : a523_rx_copy;
+	unsigned int shift = 24 - (bit % 4) * 8;
+	unsigned int word = (bit < 4) ? 0 : 4;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(a523_rx_copy); i++)
+		clrsetbits_le32(PHY_DX_BASE(lane) + copy[i].packed + word,
+				0xff << shift, (u32)delay << shift);
+
+	if (bit == 0)
+		for (i = 0; i < ARRAY_SIZE(a523_rx_copy); i++) {
+			uintptr_t reg = PHY_DX_BASE(lane) + copy[i].single;
+
+			if (copy[i].single_high)
+				clrsetbits_le32(reg, 0xff00, (u32)delay << 8);
+			else
+				clrsetbits_le32(reg, 0xff, delay);
+		}
+}
+
+/* Each direction has its own strobe; the wrong one updates nothing. */
+static void mctl_phy_bit_delay_commit(bool tx)
+{
+	uintptr_t reg = SUNXI_DRAM_PHY0_BASE + (tx ? 0x44 : 0x94);
+	u32 mask = tx ? BIT(28) : BIT(2);
+
+	setbits_le32(reg, mask);
+	clrbits_le32(reg, mask);
+	clrbits_le32(SUNXI_DRAM_PHY0_BASE + 0x84, BIT(18));
+}
+
+/*
+ * The delays a board hands over in TPR11 and TPR12 are one value per byte
+ * lane, so give every bit of a lane the same one.  The two slots of each copy
+ * past the eight data bits come from ODT_EN and TPR14 instead.
+ */
 static void mctl_phy_bit_delay_compensation(const struct dram_para *para,
 					    const struct dram_config *config)
 {
-	u8 array0[32], array1[32];
-	u32 tmp;
-	int i;
-
-	for (i = 0; i < 32; i++) {
-		array0[i] = (config->tpr11 >> (i & 0xf8)) & 0xff;
-		array1[i] = (config->tpr12 >> (i & 0xf8)) & 0x7f;
-	}
+	static const u16 spare[] = { 0x02c, 0x04c, 0x108, 0x128 };
+	unsigned int lane, bit, i;
+	u32 val;
 
 	if (para->tpr10 & TPR10_DX_BIT_DELAY1) {
-		setbits_le32(SUNXI_DRAM_PHY0_BASE + 0x84, 0x40000);
 		clrbits_le32(SUNXI_DRAM_PHY0_BASE + 0xa0, 3);
 		setbits_le32(SUNXI_DRAM_PHY0_BASE + 4, 0x80);
 		clrbits_le32(SUNXI_DRAM_PHY0_BASE + 0x44, BIT(28));
 
-		writel(array0[0], SUNXI_DRAM_PHY0_BASE + 0x320);
-		writel((array0[0] << 24) | (array0[1] << 16) |
-		       (array0[2] << 8) |
-		       array0[3], SUNXI_DRAM_PHY0_BASE + 0x324);
-		writel((array0[4] << 24) | (array0[5] << 16) |
-		       (array0[6] << 8) |
-		       array0[7], SUNXI_DRAM_PHY0_BASE + 0x328);
+		mctl_phy_bit_delay_begin(true);
 
-		writel(array0[0], SUNXI_DRAM_PHY0_BASE + 0x340);
-		writel((array0[0] << 24) | (array0[1] << 16) |
-		       (array0[2] << 8) |
-		       array0[3], SUNXI_DRAM_PHY0_BASE + 0x344);
-		writel((array0[4] << 24) | (array0[5] << 16) |
-		       (array0[6] << 8) |
-		       array0[7], SUNXI_DRAM_PHY0_BASE + 0x348);
+		for (lane = 0; lane < 4; lane++) {
+			u8 delay = (config->tpr11 >> (lane * 8)) & 0xff;
 
-		clrsetbits_le32(SUNXI_DRAM_PHY0_BASE + 0x40c, 0xff00,
-				array0[0] << 8);
-		writel((array0[0] << 24) | (array0[1] << 16) |
-		       (array0[2] << 8) | array0[3],
-		       SUNXI_DRAM_PHY0_BASE + 0x400);
-		writel((array0[4] << 24) | (array0[5] << 16) |
-		       (array0[6] << 8) | array0[7],
-		       SUNXI_DRAM_PHY0_BASE + 0x404);
+			for (bit = 0; bit < 8; bit++)
+				mctl_phy_bit_delay_set(true, lane, bit, delay);
 
-		writel(array0[0], SUNXI_DRAM_PHY0_BASE + 0x41c);
-		writel((array0[0] << 24) | (array0[1] << 16) |
-		       (array0[2] << 8) | array0[3],
-		       SUNXI_DRAM_PHY0_BASE + 0x420);
-		writel((array0[4] << 24) | (array0[5] << 16) |
-		       (array0[6] << 8) | array0[7],
-		       SUNXI_DRAM_PHY0_BASE + 0x424);
+			val = (config->odt_en >> (lane * 8)) & 0xff;
+			val = (val << 24) | (val << 8);
+			for (i = 0; i < ARRAY_SIZE(spare); i++)
+				writel(val, PHY_DX_BASE(lane) + spare[i]);
+		}
 
-		tmp = config->odt_en & 0xff;
-		tmp = (tmp << 24) | (tmp << 8);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x32c);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x34c);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x408);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x428);
-
-		writel(array0[8], SUNXI_DRAM_PHY0_BASE + 0x4a0);
-		writel((array0[8] << 24) | (array0[9] << 16) |
-		       (array0[10] << 8) | array0[11],
-		       SUNXI_DRAM_PHY0_BASE + 0x4a4);
-		writel((array0[12] << 24) | (array0[13] << 16) |
-		       (array0[14] << 8) | array0[15],
-		       SUNXI_DRAM_PHY0_BASE + 0x4a8);
-
-		writel(array0[8], SUNXI_DRAM_PHY0_BASE + 0x4c0);
-		writel((array0[8] << 24) | (array0[9] << 16) |
-		       (array0[10] << 8) | array0[11],
-		       SUNXI_DRAM_PHY0_BASE + 0x4c4);
-		writel((array0[12] << 24) | (array0[13] << 16) |
-		       (array0[14] << 8) | array0[15],
-		       SUNXI_DRAM_PHY0_BASE + 0x4c8);
-
-		clrsetbits_le32(SUNXI_DRAM_PHY0_BASE + 0x58c, 0xff00,
-				array0[8] << 8);
-		writel((array0[8] << 24) | (array0[9] << 16) |
-		       (array0[10] << 8) | array0[11],
-		       SUNXI_DRAM_PHY0_BASE + 0x580);
-		writel((array0[12] << 24) | (array0[13] << 16) |
-		       (array0[14] << 8) | array0[15],
-		       SUNXI_DRAM_PHY0_BASE + 0x584);
-
-		writel(array0[8], SUNXI_DRAM_PHY0_BASE + 0x59c);
-		writel((array0[8] << 24) | (array0[9] << 16) |
-		       (array0[10] << 8) | array0[11],
-		       SUNXI_DRAM_PHY0_BASE + 0x5a0);
-		writel((array0[12] << 24) | (array0[13] << 16) |
-		       (array0[14] << 8) | array0[15],
-		       SUNXI_DRAM_PHY0_BASE + 0x5a4);
-
-		tmp = (config->odt_en >> 8) & 0xff;
-		tmp = (tmp << 24) | (tmp << 8);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x4ac);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x4cc);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x588);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x5a8);
-
-		writel(array0[16], SUNXI_DRAM_PHY0_BASE + 0x620);
-		writel((array0[16] << 24) | (array0[17] << 16) |
-		       (array0[18] << 8) | array0[19],
-		       SUNXI_DRAM_PHY0_BASE + 0x624);
-		writel((array0[20] << 24) | (array0[21] << 16) |
-		       (array0[22] << 8) | array0[23],
-		       SUNXI_DRAM_PHY0_BASE + 0x628);
-
-		writel(array0[16], SUNXI_DRAM_PHY0_BASE + 0x640);
-		writel((array0[16] << 24) | (array0[17] << 16) |
-		       (array0[18] << 8) | array0[19],
-		       SUNXI_DRAM_PHY0_BASE + 0x644);
-		writel((array0[20] << 24) | (array0[21] << 16) |
-		       (array0[22] << 8) | array0[23],
-		       SUNXI_DRAM_PHY0_BASE + 0x648);
-
-		clrsetbits_le32(SUNXI_DRAM_PHY0_BASE + 0x70c,
-				0xff00, array0[16] << 8);
-		writel((array0[16] << 24) | (array0[17] << 16) |
-		       (array0[18] << 8) | array0[19],
-		       SUNXI_DRAM_PHY0_BASE + 0x700);
-		writel((array0[20] << 24) | (array0[21] << 16) |
-		       (array0[22] << 8) | array0[23],
-		       SUNXI_DRAM_PHY0_BASE + 0x704);
-
-		writel(array0[16], SUNXI_DRAM_PHY0_BASE + 0x71c);
-		writel((array0[16] << 24) | (array0[17] << 16) |
-		       (array0[18] << 8) | array0[19],
-		      SUNXI_DRAM_PHY0_BASE + 0x720);
-		writel((array0[20] << 24) | (array0[21] << 16) |
-		       (array0[22] << 8) | array0[23], SUNXI_DRAM_PHY0_BASE + 0x724);
-
-		tmp = (config->odt_en >> 16) & 0xff;
-		tmp = (tmp << 24) | (tmp << 8);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x62c);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x64c);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x708);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x728);
-
-		writel(array0[24], SUNXI_DRAM_PHY0_BASE + 0x7a0);
-		writel((array0[24] << 24) | (array0[25] << 16) |
-		       (array0[26] << 8) | array0[27],
-		       SUNXI_DRAM_PHY0_BASE + 0x7a4);
-		writel((array0[28] << 24) | (array0[29] << 16) |
-		       (array0[30] << 8) | array0[31],
-		       SUNXI_DRAM_PHY0_BASE + 0x7a8);
-
-		writel(array0[24], SUNXI_DRAM_PHY0_BASE + 0x7c0);
-		writel((array0[24] << 24) | (array0[25] << 16) |
-		       (array0[26] << 8) | array0[27],
-		       SUNXI_DRAM_PHY0_BASE + 0x7c4);
-		writel((array0[28] << 24) | (array0[29] << 16) |
-		       (array0[30] << 8) | array0[31],
-		       SUNXI_DRAM_PHY0_BASE + 0x7c8);
-
-		clrsetbits_le32(SUNXI_DRAM_PHY0_BASE + 0x88c, 0xff00,
-				array0[24] << 8);
-		writel((array0[24] << 24) | (array0[25] << 16) |
-		       (array0[26] << 8) | array0[27],
-		       SUNXI_DRAM_PHY0_BASE + 0x880);
-		writel((array0[28] << 24) | (array0[29] << 16) |
-		       (array0[30] << 8) | array0[31],
-		       SUNXI_DRAM_PHY0_BASE + 0x884);
-
-		writel(array0[24], SUNXI_DRAM_PHY0_BASE + 0x89c);
-		writel((array0[24] << 24) | (array0[25] << 16) |
-		       (array0[26] << 8) | array0[27],
-		       SUNXI_DRAM_PHY0_BASE + 0x8a0);
-		writel((array0[28] << 24) | (array0[29] << 16) |
-		       (array0[30] << 8) | array0[31],
-		       SUNXI_DRAM_PHY0_BASE + 0x8a4);
-
-		tmp = (config->odt_en >> 24) & 0xff;
-		tmp = (tmp << 24) | (tmp << 8);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x7ac);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x7cc);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x888);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x8a8);
-
-		setbits_le32(SUNXI_DRAM_PHY0_BASE + 0x44, BIT(28));
-		clrbits_le32(SUNXI_DRAM_PHY0_BASE + 0x44, BIT(28));
-		clrbits_le32(SUNXI_DRAM_PHY0_BASE + 0x84, 0x40000);
+		mctl_phy_bit_delay_commit(true);
 	}
 
 	if (para->tpr10 & TPR10_DX_BIT_DELAY0) {
-		setbits_le32(SUNXI_DRAM_PHY0_BASE + 0x84, 0x40000);
+		mctl_phy_bit_delay_begin(false);
 
-		writel(array1[0] << 8, SUNXI_DRAM_PHY0_BASE + 0x330);
-		writel((array1[0] << 24) | (array1[1] << 16) |
-		       (array1[2] << 8) | array1[3],
-		       SUNXI_DRAM_PHY0_BASE + 0x334);
-		writel((array1[4] << 24) | (array1[5] << 16) |
-		       (array1[6] << 8) | array1[7],
-		       SUNXI_DRAM_PHY0_BASE + 0x338);
+		for (lane = 0; lane < 4; lane++) {
+			u8 delay = (config->tpr12 >> (lane * 8)) & 0x7f;
 
-		writel(array1[0] << 8, SUNXI_DRAM_PHY0_BASE + 0x350);
-		writel((array1[0] << 24) | (array1[1] << 16) |
-		       (array1[2] << 8) | array1[3],
-		       SUNXI_DRAM_PHY0_BASE + 0x354);
-		writel((array1[4] << 24) | (array1[5] << 16) |
-		       (array1[6] << 8) | array1[7],
-		       SUNXI_DRAM_PHY0_BASE + 0x358);
+			for (bit = 0; bit < 8; bit++)
+				mctl_phy_bit_delay_set(false, lane, bit, delay);
 
-		clrsetbits_le32(SUNXI_DRAM_PHY0_BASE + 0x40c, 0xff, array1[0]);
-		writel((array1[0] << 24) | (array1[1] << 16) |
-		       (array1[2] << 8) | array1[3],
-		       SUNXI_DRAM_PHY0_BASE + 0x410);
-		writel((array1[4] << 24) | (array1[5] << 16) |
-		       (array1[6] << 8) | array1[7],
-		       SUNXI_DRAM_PHY0_BASE + 0x414);
+			val = (config->tpr14 >> (lane * 8)) & 0xff;
+			val = (val << 24) | (val << 8);
+			for (i = 0; i < ARRAY_SIZE(spare); i++)
+				writel(val, PHY_DX_BASE(lane) + spare[i] + 0x10);
+		}
 
-		writel(array1[0] << 8, SUNXI_DRAM_PHY0_BASE + 0x42c);
-		writel((array1[0] << 24) | (array1[1] << 16) |
-		       (array1[2] << 8) | array1[3],
-		       SUNXI_DRAM_PHY0_BASE + 0x430);
-		writel((array1[4] << 24) | (array1[5] << 16) |
-		       (array1[6] << 8) | array1[7],
-		       SUNXI_DRAM_PHY0_BASE + 0x434);
-
-		tmp = config->tpr14 & 0xff;
-		tmp = (tmp << 24) | (tmp << 8);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x33c);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x35c);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x418);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x438);
-
-		writel(array1[8] << 8, SUNXI_DRAM_PHY0_BASE + 0x4b0);
-		writel((array1[8] << 24) | (array1[9] << 16) |
-		       (array1[10] << 8) | array1[11],
-		       SUNXI_DRAM_PHY0_BASE + 0x4b4);
-		writel((array1[12] << 24) | (array1[13] << 16) |
-		       (array1[14] << 8) | array1[15],
-		       SUNXI_DRAM_PHY0_BASE + 0x4b8);
-
-		writel(array1[8] << 8, SUNXI_DRAM_PHY0_BASE + 0x4d0);
-		writel((array1[8] << 24) | (array1[9] << 16) |
-		       (array1[10] << 8) | array1[11],
-		       SUNXI_DRAM_PHY0_BASE + 0x4d4);
-		writel((array1[12] << 24) | (array1[13] << 16) |
-		       (array1[14] << 8) | array1[15],
-		       SUNXI_DRAM_PHY0_BASE + 0x4d8);
-
-		clrsetbits_le32(SUNXI_DRAM_PHY0_BASE + 0x58c, 0xff, array1[8]);
-		writel((array1[8] << 24) | (array1[9] << 16) |
-		       (array1[10] << 8) | array1[11],
-		       SUNXI_DRAM_PHY0_BASE + 0x590);
-		writel((array1[12] << 24) | (array1[13] << 16) |
-		       (array1[14] << 8) | array1[15],
-		       SUNXI_DRAM_PHY0_BASE + 0x594);
-
-		writel(array1[8] << 8, SUNXI_DRAM_PHY0_BASE + 0x5ac);
-		writel((array1[8] << 24) | (array1[9] << 16) |
-		       (array1[10] << 8) | array1[11],
-		       SUNXI_DRAM_PHY0_BASE + 0x5b0);
-		writel((array1[12] << 24) | (array1[13] << 16) |
-		       (array1[14] << 8) | array1[15],
-		       SUNXI_DRAM_PHY0_BASE + 0x5b4);
-
-		tmp = (config->tpr14 >> 8) & 0xff;
-		tmp = (tmp << 24) | (tmp << 8);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x4bc);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x4dc);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x598);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x5b8);
-
-		writel(array1[16] << 8, SUNXI_DRAM_PHY0_BASE + 0x630);
-		writel((array1[16] << 24) | (array1[17] << 16) |
-		       (array1[18] << 8) | array1[19],
-		       SUNXI_DRAM_PHY0_BASE + 0x634);
-		writel((array1[20] << 24) | (array1[21] << 16) |
-		       (array1[22] << 8) | array1[23],
-		       SUNXI_DRAM_PHY0_BASE + 0x638);
-
-		writel(array1[16] << 8, SUNXI_DRAM_PHY0_BASE + 0x650);
-		writel((array1[16] << 24) | (array1[17] << 16) |
-		       (array1[18] << 8) | array1[19],
-		       SUNXI_DRAM_PHY0_BASE + 0x654);
-		writel((array1[20] << 24) | (array1[21] << 16) |
-		       (array1[22] << 8) | array1[23],
-		       SUNXI_DRAM_PHY0_BASE + 0x658);
-
-		clrsetbits_le32(SUNXI_DRAM_PHY0_BASE + 0x70c, 0xff, array1[16]);
-		writel((array1[16] << 24) | (array1[17] << 16) |
-		       (array1[18] << 8) | array1[19],
-		       SUNXI_DRAM_PHY0_BASE + 0x710);
-		writel((array1[20] << 24) | (array1[21] << 16) |
-		       (array1[22] << 8) | array1[23],
-		       SUNXI_DRAM_PHY0_BASE + 0x714);
-
-		writel(array1[16] << 8, SUNXI_DRAM_PHY0_BASE + 0x72c);
-		writel((array1[16] << 24) | (array1[17] << 16) |
-		       (array1[18] << 8) | array1[19],
-		       SUNXI_DRAM_PHY0_BASE + 0x730);
-		writel((array1[20] << 24) | (array1[21] << 16) |
-		       (array1[22] << 8) | array1[23],
-		       SUNXI_DRAM_PHY0_BASE + 0x734);
-
-		tmp = (config->tpr14 >> 16) & 0xff;
-		tmp = (tmp << 24) | (tmp << 8);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x63c);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x65c);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x718);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x738);
-
-		writel(array1[24] << 8, SUNXI_DRAM_PHY0_BASE + 0x7b0);
-		writel((array1[24] << 24) | (array1[25] << 16) |
-		       (array1[26] << 8) | array1[27],
-		       SUNXI_DRAM_PHY0_BASE + 0x7b4);
-		writel((array1[28] << 24) | (array1[29] << 16) |
-		       (array1[30] << 8) | array1[31],
-		       SUNXI_DRAM_PHY0_BASE + 0x7b8);
-
-		writel(array1[24] << 8, SUNXI_DRAM_PHY0_BASE + 0x7d0);
-		writel((array1[24] << 24) | (array1[25] << 16) |
-		       (array1[26] << 8) | array1[27],
-		       SUNXI_DRAM_PHY0_BASE + 0x7d4);
-		writel((array1[28] << 24) | (array1[29] << 16) |
-		       (array1[30] << 8) | array1[31],
-		       SUNXI_DRAM_PHY0_BASE + 0x7d8);
-
-		clrsetbits_le32(SUNXI_DRAM_PHY0_BASE + 0x88c, 0xff, array1[24]);
-		writel((array1[24] << 24) | (array1[25] << 16) |
-		       (array1[26] << 8) | array1[27],
-		       SUNXI_DRAM_PHY0_BASE + 0x890);
-		writel((array1[28] << 24) | (array1[29] << 16) |
-		       (array1[30] << 8) | array1[31],
-		       SUNXI_DRAM_PHY0_BASE + 0x894);
-
-		writel(array1[24] << 8, SUNXI_DRAM_PHY0_BASE + 0x8ac);
-		writel((array1[24] << 24) | (array1[25] << 16) |
-		       (array1[26] << 8) | array1[27],
-		       SUNXI_DRAM_PHY0_BASE + 0x8b0);
-		writel((array1[28] << 24) | (array1[29] << 16) |
-		       (array1[30] << 8) | array1[31],
-		       SUNXI_DRAM_PHY0_BASE + 0x8b4);
-
-		tmp = (config->tpr14 >> 24) & 0xff;
-		tmp = (tmp << 24) | (tmp << 8);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x7bc);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x7dc);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x898);
-		writel(tmp, SUNXI_DRAM_PHY0_BASE + 0x8b8);
-
-		setbits_le32(SUNXI_DRAM_PHY0_BASE + 0x94, 4);
-		clrbits_le32(SUNXI_DRAM_PHY0_BASE + 0x94, 4);
-		clrbits_le32(SUNXI_DRAM_PHY0_BASE + 0x84, 0x40000);
+		mctl_phy_bit_delay_commit(false);
 	}
 }
 
