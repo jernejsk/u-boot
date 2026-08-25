@@ -14,6 +14,7 @@
 #include <asm/arch/clock.h>
 #include <asm/arch/dram.h>
 #include <asm/arch/dram_dw_helpers.h>
+#include <asm/arch/dram_eye_scan.h>
 #include <asm/arch/cpu.h>
 #include <asm/arch/prcm.h>
 #include <linux/bitops.h>
@@ -536,12 +537,26 @@ static const struct a523_delay_copy a523_tx_copy[] = {
 #define PHY_DX_BASE(lane)	((uintptr_t)SUNXI_DRAM_PHY0_BASE + 0x300 + \
 				 (lane) * 0x180)
 
-static void mctl_phy_bit_delay_begin(bool tx)
+u8 mctl_phy_bit_delay_max(bool tx)
+{
+	return tx ? 0xff : 0x7f;
+}
+
+u8 mctl_phy_bit_delay_get(bool tx, unsigned int lane, unsigned int bit)
+{
+	const struct a523_delay_copy *copy = tx ? a523_tx_copy : a523_rx_copy;
+	uintptr_t reg = PHY_DX_BASE(lane) + copy[0].packed +
+			((bit < 4) ? 0 : 4);
+
+	return (readl(reg) >> (24 - (bit % 4) * 8)) & 0xff;
+}
+
+void mctl_phy_bit_delay_begin(bool tx)
 {
 	setbits_le32(SUNXI_DRAM_PHY0_BASE + 0x84, BIT(18));
 }
 
-static void mctl_phy_bit_delay_set(bool tx, unsigned int lane, unsigned int bit,
+void mctl_phy_bit_delay_set(bool tx, unsigned int lane, unsigned int bit,
 			    u8 delay)
 {
 	const struct a523_delay_copy *copy = tx ? a523_tx_copy : a523_rx_copy;
@@ -565,7 +580,7 @@ static void mctl_phy_bit_delay_set(bool tx, unsigned int lane, unsigned int bit,
 }
 
 /* Each direction has its own strobe; the wrong one updates nothing. */
-static void mctl_phy_bit_delay_commit(bool tx)
+void mctl_phy_bit_delay_commit(bool tx)
 {
 	uintptr_t reg = SUNXI_DRAM_PHY0_BASE + (tx ? 0x44 : 0x94);
 	u32 mask = tx ? BIT(28) : BIT(2);
@@ -1242,12 +1257,28 @@ static void init_something(void)
 	writel(7, 0x07102008);
 }
 
+/* The bit the vendor firmware tests before centring its own delays. */
+static bool mctl_eye_scan_wanted(const struct dram_config *config)
+{
+	return config->tpr13 & TPR13_DX_BIT_SCAN;
+}
+
+/* The narrowest eye that still counts as one, scaled with the clock. */
+static bool mctl_phy_dx_eye_scan(const struct dram_config *config)
+{
+	u32 k = ((config->tpr13 >> 8) & 3) + 1;
+	u32 min_width = (u32)(((u64)config->clk * 6400 * k * 0x431bde83ULL) >> 50);
+
+	return mctl_phy_eye_scan(config->bus_full_width ? 4 : 2, min_width);
+}
+
 unsigned long sunxi_dram_init(void)
 {
 	struct dram_config config;
 	unsigned long size;
 
 	config.clk = 360;
+	config.tpr13 = 0;
 	switch (para.type) {
 	case SUNXI_DRAM_TYPE_DDR3:
 		config.odt_en = 0x90909090;
@@ -1275,9 +1306,13 @@ unsigned long sunxi_dram_init(void)
 	config.odt_en = CONFIG_DRAM_SUNXI_ODT_EN;
 	config.tpr11 = CONFIG_DRAM_SUNXI_TPR11;
 	config.tpr12 = CONFIG_DRAM_SUNXI_TPR12;
+	config.tpr13 = CONFIG_DRAM_SUNXI_TPR13;
 	config.tpr14 = CONFIG_DRAM_SUNXI_TPR14;
 
 	mctl_core_init(&para, &config);
+
+	if (mctl_eye_scan_wanted(&config) && !mctl_phy_dx_eye_scan(&config))
+		debug("DRAM: the eye scan found marginal bits\n");
 
 	size = mctl_calc_size(&config);
 

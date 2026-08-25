@@ -118,6 +118,8 @@ check_member(sunxi_mctl_ctl_reg, unk_0x4240, 0x4240);
 #define TPR10_READ_TRAINING	BIT(22)
 #define TPR10_WRITE_TRAINING	BIT(23)
 
+#define TPR13_DX_BIT_SCAN	BIT(10)
+
 struct dram_para {
 	enum sunxi_dram_type type;
 	u32 dx_odt;
@@ -139,6 +141,7 @@ struct dram_config {
 	u32 odt_en;
 	u32 tpr11;
 	u32 tpr12;
+	u32 tpr13;
 	u32 tpr14;
 };
 

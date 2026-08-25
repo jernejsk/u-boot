@@ -59,8 +59,16 @@ config DRAM_SUN50I_A133
 
 config DRAM_SUN55I_A523
 	bool
+	select SUNXI_DRAM_EYE_SCAN
 	help
 	  Select this DRAM controller driver for A523/T527 SoCs.
+
+config SUNXI_DRAM_EYE_SCAN
+	bool
+	help
+	  Centre every data bit's delay in the middle of the region that
+	  passes a memory test.  Select it from a DRAM controller driver
+	  whose PHY keeps the delays in the layout the scan expects.
 
 if DRAM_SUN50I_H616 || DRAM_SUN50I_A133 || DRAM_SUN55I_A523
 config DRAM_SUNXI_DX_ODT
@@ -195,6 +203,14 @@ config DRAM_SUNXI_TPR12
 	default 0x0
 	help
 	  TPR12 value from vendor DRAM settings.
+
+config DRAM_SUNXI_TPR13
+	hex "DRAM TPR13 parameter"
+	default 0x0
+	help
+	  TPR13 value from vendor DRAM settings.  It gates optional features;
+	  bits 0 and 2 set with bit 11 clear ask for the data bit eye scan,
+	  and bits 9:8 scale the minimum acceptable eye width.
 
 config DRAM_SUNXI_MR14
 	hex "LPDDR4 MR14 value"
