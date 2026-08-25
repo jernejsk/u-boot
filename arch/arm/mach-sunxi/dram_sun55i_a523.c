@@ -1036,8 +1036,7 @@ static bool mctl_phy_init(const struct dram_para *para,
 
 	mctl_phy_configure_odt(para);
 
-	if (para->tpr10 & TPR10_CA_BIT_DELAY)
-		mctl_phy_ca_bit_delay_compensation(para, config);
+	mctl_phy_ca_bit_delay_compensation(para, config);
 
 	switch (para->type) {
 	case SUNXI_DRAM_TYPE_DDR3:
