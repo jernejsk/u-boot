@@ -9,6 +9,7 @@
  */
 #include <init.h>
 #include <log.h>
+#include <time.h>
 #include <asm/io.h>
 #include <asm/arch/clock.h>
 #include <asm/arch/dram.h>
@@ -275,6 +276,23 @@ static bool mctl_phy_write_leveling(const struct dram_para *para,
 	return result;
 }
 
+/* The PHY does not raise its error bit for every way this can fail. */
+static bool mctl_phy_await_calibration(u32 done)
+{
+	unsigned long tmo = timer_get_us() + 500000;
+
+	while ((readl(SUNXI_DRAM_PHY0_BASE + 0x20c) & done) != done) {
+		if (readl(SUNXI_DRAM_PHY0_BASE + 0x20c) & 0x20)
+			return false;
+		if (timer_get_us() > tmo) {
+			debug("read calibration timed out\n");
+			return false;
+		}
+	}
+
+	return true;
+}
+
 static bool mctl_phy_read_calibration(const struct dram_para *para,
 				      const struct dram_config *config)
 {
@@ -292,12 +310,8 @@ static bool mctl_phy_read_calibration(const struct dram_para *para,
 	else
 		val = 3;
 
-	while ((readl(SUNXI_DRAM_PHY0_BASE + 0x20c) & val) != val) {
-		if (readl(SUNXI_DRAM_PHY0_BASE + 0x20c) & 0x20) {
-			result = false;
-			break;
-		}
-	}
+	if (!mctl_phy_await_calibration(val))
+		result = false;
 
 	clrbits_le32(SUNXI_DRAM_PHY0_BASE + 4, 1);
 	clrbits_le32(SUNXI_DRAM_PHY0_BASE + 4, 0x3c);
@@ -306,12 +320,8 @@ static bool mctl_phy_read_calibration(const struct dram_para *para,
 		clrsetbits_le32(SUNXI_DRAM_PHY0_BASE + 4, 0x3c, 0x34);
 		setbits_le32(SUNXI_DRAM_PHY0_BASE + 4, 1);
 
-		while ((readl(SUNXI_DRAM_PHY0_BASE + 0x20c) & val) != val) {
-			if (readl(SUNXI_DRAM_PHY0_BASE + 0x20c) & 0x20) {
-				result = false;
-				break;
-			}
-		}
+		if (!mctl_phy_await_calibration(val))
+			result = false;
 
 		clrbits_le32(SUNXI_DRAM_PHY0_BASE + 4, 1);
 		clrbits_le32(SUNXI_DRAM_PHY0_BASE + 4, 0x3c);
