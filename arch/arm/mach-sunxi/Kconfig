@@ -614,7 +614,7 @@ config SUNXI_DRAM_DDR4
 
 choice
 	prompt "DRAM Type and Timing"
-	default SUNXI_DRAM_A523_LPDDR4 if MACH_SUN55I_A523
+	default SUNXI_DRAM_A523_LPDDR4X if MACH_SUN55I_A523
 	default SUNXI_DRAM_DDR3_1333 if !MACH_SUN8I_V3S
 	default SUNXI_DRAM_DDR2_V3S if MACH_SUN8I_V3S
 
@@ -706,13 +706,13 @@ config SUNXI_DRAM_A523_DDR3
 	  This option is the DDR3 timing used by the stock boot0 by
 	  Allwinner.
 
-config SUNXI_DRAM_A523_LPDDR4
-	bool "LPDDR4 DRAM chips on the A523/T527 DRAM controller"
+config SUNXI_DRAM_A523_LPDDR4X
+	bool "LPDDR4X DRAM chips on the A523/T527 DRAM controller"
 	select SUNXI_DRAM_LPDDR4
 	depends on DRAM_SUN55I_A523
 	help
-	  This option is the LPDDR4 timing used by the stock boot0 by
-	  Allwinner.
+	  This option is the LPDDR4X timing used by the stock boot0 by
+	  Allwinner, which calls it type 8.
 endchoice
 endif
 

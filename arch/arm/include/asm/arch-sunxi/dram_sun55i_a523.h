@@ -10,11 +10,13 @@
 
 #include <linux/bitops.h>
 
+/* The type numbers a board's own parameters use on this controller. */
 enum sunxi_dram_type {
 	SUNXI_DRAM_TYPE_DDR3 = 3,
 	SUNXI_DRAM_TYPE_DDR4,
-	SUNXI_DRAM_TYPE_LPDDR3 = 7,
-	SUNXI_DRAM_TYPE_LPDDR4
+	SUNXI_DRAM_TYPE_LPDDR3 = 6,	/* not supported here */
+	SUNXI_DRAM_TYPE_LPDDR4,
+	SUNXI_DRAM_TYPE_LPDDR4X
 };
 
 #define MCTL_COM_UNK_008        0x008
